@@ -18,7 +18,6 @@ SET (LIBGD_SRC_FILES
 	gd_io_dp.c
 	gd_io_file.c
 	gd_io_ss.c
-	gd_io_stream.cxx
 	gd_jpeg.c
 	gd_matrix.c
 	gd_nnquant.c
@@ -44,11 +43,17 @@ SET (LIBGD_SRC_FILES
 	gdfx.c
 	gdhelpers.c
 	gdkanji.c
-	gdpp.cxx
 	gdtables.c
 	gdxpm.c
 	wbmp.c
 )
+
+if(ENABLE_CPP)
+	LIST(APPEND LIBGD_SRC_FILES
+		gd_io_stream.cxx
+		gdpp.cxx
+	)
+endif(ENABLE_CPP)
 
 # Static library just for utility programs.
 SET (GD_PROGRAMS_LIB_SRC_FILES)
@@ -115,6 +120,11 @@ SET(LIBGD_DEP_LIBS
 	${RAQM_LIBRARIES}
 	${HEIF_LIBRARIES}
 )
+
+if (NEED_LINKING_AGAINST_LIBM)
+     LIST(APPEND LIBGD_DEP_LIBS m)
+endif()
+
 if (BUILD_SHARED_LIBS)
 	target_link_libraries(${GD_LIB} ${LIBGD_DEP_LIBS})
 endif()
