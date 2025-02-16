@@ -3,9 +3,6 @@
 /* Define is you are building for Win32 API */
 #cmakedefine BGDWIN32
 
-/* Define is you are building for Win32 API */
-#cmakedefine ENABLE_CPP_API
-
 /* Whether to support gd image formats */
 #cmakedefine01 ENABLE_GD_FORMATS
 
@@ -47,9 +44,6 @@
 
 /* Define if you have jpeg */
 #cmakedefine HAVE_LIBJPEG
-
-/* Define to 1 if you have the `m' library (-lm). */
-#cmakedefine HAVE_LIBM
 
 /* Define if you have png */
 #cmakedefine HAVE_LIBPNG
