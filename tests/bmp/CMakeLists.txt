@@ -5,6 +5,7 @@ LIST(APPEND TESTS_FILES
 	bmp_im2im
 	bug00276
 	bmp_size
+	bmpsuite
 )
 
 ADD_GD_TESTS()
