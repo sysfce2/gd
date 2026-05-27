@@ -2,135 +2,88 @@
 #include "gdtest.h"
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#if defined(_WIN32)
-#include "readdir.h"
-#else
-#include <dirent.h>
-#endif
+static const char *valid_files[] = {
+	"14b47384-7042-11e5-801d-804da7b4cbe6.png",
+	"Disable_auto_recalculation_26.png",
+	"wm_upload_wikimedia_org_3a9fa5185de5c6c8.png",
+	"wm_upload_wikimedia_org_45634e241d7821a3.png",
+	"wm_upload_wikimedia_org_4edbe895c4c29af5.png",
+	"wm_upload_wikimedia_org_8d8a8e9b8a7cf5bf.png",
+	"wm_upload_wikimedia_org_a23d1e831e128dff.png",
+	"wm_upload_wikimedia_org_c8a458b0cef3d942.png",
+	"wm_upload_wikimedia_org_f14b0faca19b77e2.png",
+	"wm_upload_wikimedia_org_f6c96971fbd1da0d.png"
+};
 
-#include <sys/stat.h>
+static const char *invalid_files[] = {
+	"badadler.png"
+};
 
-typedef enum {
-	PNG_EXPECT_DECODE,
-	PNG_EXPECT_REJECT
-} png_expectation;
-
-static int has_png_suffix(const char *name)
-{
-	size_t len = strlen(name);
-	return len > 4 && strcmp(name + len - 4, ".png") == 0;
-}
-
-static int is_directory(const char *path)
-{
-	struct stat st;
-	return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
-}
-
-static gdImagePtr read_png(const char *path)
+static gdImagePtr read_png(const char *dir, const char *filename, int *opened)
 {
 	FILE *fp;
 	gdImagePtr im;
 
-	fp = fopen(path, "rb");
+	*opened = 0;
+	fp = gdTestFileOpenX("png", "png-conformance", dir, filename, NULL);
 	if (fp == NULL) {
 		return NULL;
 	}
+	*opened = 1;
 	im = gdImageCreateFromPng(fp);
 	fclose(fp);
 	return im;
 }
 
-static void assert_valid_file(const char *path)
+static void assert_valid_file(const char *filename)
 {
-	gdImagePtr im = read_png(path);
+	int opened;
+	gdImagePtr im = read_png("valid", filename, &opened);
 
-	gdTestAssertMsg(im != NULL, "valid PNG failed to decode: %s\n", path);
+	gdTestAssertMsg(opened, "cannot open valid PNG conformance file: %s\n", filename);
+	if (!opened) {
+		return;
+	}
+	gdTestAssertMsg(im != NULL, "valid PNG failed to decode: %s\n", filename);
 	if (im == NULL) {
 		return;
 	}
 
 	gdTestAssertMsg(gdImageSX(im) > 0 && gdImageSY(im) > 0,
-	                "decoded PNG has invalid dimensions: %s\n", path);
+	                "decoded PNG has invalid dimensions: %s\n", filename);
 	gdImageDestroy(im);
 }
 
-static void assert_invalid_file(const char *path)
+static void assert_invalid_file(const char *filename)
 {
-	gdImagePtr im = read_png(path);
+	int opened;
+	gdImagePtr im = read_png("invalid", filename, &opened);
 
-	gdTestAssertMsg(im == NULL, "invalid PNG decoded successfully: %s\n", path);
+	gdTestAssertMsg(opened, "cannot open invalid PNG conformance file: %s\n", filename);
+	if (!opened) {
+		return;
+	}
+	gdTestAssertMsg(im == NULL, "invalid PNG decoded successfully: %s\n", filename);
 	if (im != NULL) {
 		gdImageDestroy(im);
 	}
 }
 
-static int scan_directory(const char *dir, png_expectation expectation)
-{
-	DIR *handle;
-	struct dirent *entry;
-	int files = 0;
-
-	handle = opendir(dir);
-	if (handle == NULL) {
-		gdTestErrorMsg("cannot open PNG conformance directory: %s\n", dir);
-		return 0;
-	}
-
-	while ((entry = readdir(handle)) != NULL) {
-		char path[4096];
-
-		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-			continue;
-		}
-		if (snprintf(path, sizeof(path), "%s/%s", dir, entry->d_name) >= (int)sizeof(path)) {
-			gdTestErrorMsg("PNG corpus path is too long: %s/%s\n", dir, entry->d_name);
-			continue;
-		}
-		if (is_directory(path)) {
-			files += scan_directory(path, expectation);
-			continue;
-		}
-		if (!has_png_suffix(entry->d_name)) {
-			continue;
-		}
-		files++;
-		if (expectation == PNG_EXPECT_DECODE) {
-			assert_valid_file(path);
-		} else {
-			assert_invalid_file(path);
-		}
-	}
-
-	closedir(handle);
-	return files;
-}
-
 int main(void)
 {
-	char *valid = gdTestFilePathX("png", "png-conformance", "valid", NULL);
-	char *invalid = gdTestFilePathX("png", "png-conformance", "invalid", NULL);
-	int valid_files;
-	int invalid_files;
+	size_t i;
 
 	gdSetErrorMethod(gdSilence);
-	valid_files = scan_directory(valid, PNG_EXPECT_DECODE);
-	invalid_files = scan_directory(invalid, PNG_EXPECT_REJECT);
+
+	for (i = 0; i < sizeof(valid_files) / sizeof(valid_files[0]); i++) {
+		assert_valid_file(valid_files[i]);
+	}
+
+	for (i = 0; i < sizeof(invalid_files) / sizeof(invalid_files[0]); i++) {
+		assert_invalid_file(invalid_files[i]);
+	}
+
 	gdClearErrorMethod();
-
-	gdTestAssertMsg(valid_files > 0,
-	                "PNG conformance valid corpus has no .png files in %s "
-	                "(valid=%d invalid=%d)\n",
-	                valid, valid_files, invalid_files);
-	gdTestAssertMsg(invalid_files > 0,
-	                "PNG conformance invalid corpus has no .png files in %s "
-	                "(valid=%d invalid=%d)\n",
-	                invalid, valid_files, invalid_files);
-
-	free(valid);
-	free(invalid);
 	return gdNumFailures();
 }
