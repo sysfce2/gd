@@ -86,6 +86,7 @@ if (BUILD_TEST)
 		gif
 		heif
 		jpeg
+		metadata
 		perceptualdiff
 		png
 		tga
