@@ -1,0 +1,15 @@
+if HAVE_LIBUHDR
+libgd_test_programs += \
+	uhdr/uhdr_null \
+	uhdr/uhdr_plain_jpeg_rejected \
+	uhdr/uhdr_roundtrip \
+	uhdr/uhdr_ptr_roundtrip
+endif
+
+EXTRA_DIST += \
+	uhdr/CMakeLists.txt \
+	uhdr/uhdr_sample.jpg \
+	uhdr/uhdr_null.c \
+	uhdr/uhdr_plain_jpeg_rejected.c \
+	uhdr/uhdr_roundtrip.c \
+	uhdr/uhdr_ptr_roundtrip.c
