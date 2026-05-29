@@ -30,7 +30,7 @@ Then emails can be sent to gd-devel@lists.php.net.
 
 ## Downloads/etc...
 
-Please visit our [homepage](https://www.libgd.org/) for more details.
+Please visit our [homepage](https://libgd.github.io/) for more details.
 
 ## Supported Image Formats
 
