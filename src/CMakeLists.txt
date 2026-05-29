@@ -30,6 +30,7 @@ SET (LIBGD_SRC_FILES
 	gd_tiff.c
 	gd_topal.c
 	gd_transform.c
+	gd_uhdr.c
 	gd_version.c
 	gd_wbmp.c
 	gd_webp.c
@@ -118,6 +119,7 @@ SET(LIBGD_DEP_LIBS
 	${FONTCONFIG_LIBRARY}
 	${WEBP_LIBRARIES}
 	${AVIF_LIBRARIES}
+	${UHDR_LIBRARIES}
 	${RAQM_LIBRARIES}
 	${HEIF_LIBRARIES}
 )
