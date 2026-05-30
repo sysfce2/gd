@@ -508,11 +508,12 @@ cleanup:
 static avifBool _gdImageAvifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, int speed)
 {
 	avifResult result;
-	avifRGBImage rgb;
+	avifRGBImage rgb = {0};
 	avifRWData avifOutput = AVIF_DATA_EMPTY;
 	avifBool failed = AVIF_FALSE;
 	avifBool lossless = quality == 100;
 	avifEncoder *encoder = NULL;
+	avifImage *avifIm = NULL;
 
 	uint32_t val;
 	uint8_t *p;
@@ -545,7 +546,7 @@ static avifBool _gdImageAvifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, in
 	// Set the ICC to sRGB, as that's what gd supports right now.
 	// Note that MATRIX_COEFFICIENTS_IDENTITY enables lossless conversion from RGB to YUV.
 
-	avifImage *avifIm = avifImageCreate(gdImageSX(im), gdImageSY(im), 8, subsampling);
+	avifIm = avifImageCreate(gdImageSX(im), gdImageSY(im), 8, subsampling);
 	if (avifIm == NULL) {
 		gd_error("avif error - Creating image failed\n");
 		goto cleanup;
