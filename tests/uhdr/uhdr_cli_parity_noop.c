@@ -16,6 +16,12 @@
 #define RAW_MAX_DIFF 16
 #define RAW_MAX_CHANGED_RATIO 0.005
 
+#ifdef _WIN32
+#define gdTestStrtok(s, sep, state) strtok_s((s), (sep), (state))
+#else
+#define gdTestStrtok(s, sep, state) strtok_r((s), (sep), (state))
+#endif
+
 typedef struct {
 	char key[64];
 	double values[MAX_METADATA_VALUES];
@@ -150,7 +156,7 @@ static int parse_metadata_file(const char *path, MetadataTable *table)
 	table->count = 0;
 	while (fgets(line, sizeof(line), fp) != NULL) {
 		char *saveptr = NULL;
-		char *token = strtok_r(line, " \t\r\n", &saveptr);
+		char *token = gdTestStrtok(line, " \t\r\n", &saveptr);
 		MetadataEntry *entry;
 
 		if (!token || strncmp(token, "--", 2) != 0) {
@@ -168,7 +174,7 @@ static int parse_metadata_file(const char *path, MetadataTable *table)
 		entry->key[sizeof(entry->key) - 1] = '\0';
 		entry->value_count = 0;
 
-		while ((token = strtok_r(NULL, " \t\r\n", &saveptr)) != NULL) {
+		while ((token = gdTestStrtok(NULL, " \t\r\n", &saveptr)) != NULL) {
 			char *end = NULL;
 			double v;
 			if (entry->value_count >= MAX_METADATA_VALUES) {
