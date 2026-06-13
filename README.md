@@ -115,3 +115,14 @@ We do have CI using:
 - GD 3.0 has been started, focusing on high quality 2D Vector drawing APIs
   and full support of actual ARGB 32 bits/8bits or float.
   It is not production ready yet
+
+# Contributors
+<!--
+Source - https://stackoverflow.com/a/68037640
+Posted by Bertrand Martel
+Retrieved 2026-06-13, License - CC BY-SA 4.0
+-->
+
+<a href="https://github.com/libgd/libgd/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=libgd/libgd" />
+</a>
