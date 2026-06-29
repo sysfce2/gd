@@ -70,6 +70,7 @@ libgd_la_SOURCES = \
 	gd_color_match.c \
 	gd_crop.c \
 	gd_filename.c \
+	gd_readimage.c \
 	gd_filter.c \
 	gd_gd.c \
 	gd_gd2.c \
@@ -85,6 +86,7 @@ libgd_la_SOURCES = \
 	gd_io_ss.c \
 	gd_io_stream.h \
 	gd_jpeg.c \
+	gd_jxl.c \
 	gd_matrix.c \
 	gd_metadata.c \
 	gd_nnquant.c \

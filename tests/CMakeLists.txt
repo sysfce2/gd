@@ -86,10 +86,12 @@ if (BUILD_TEST)
 		gif
 		heif
 		jpeg
+		jxl
 		metadata
 		perceptualdiff
 		png
 		qoi
+		readimage
 		uhdr
 		tga
 		tiff

@@ -84,9 +84,11 @@ include gdtransformaffinecopy/Makemodule.am
 include gif/Makemodule.am
 include heif/Makemodule.am
 include jpeg/Makemodule.am
+include jxl/Makemodule.am
 include metadata/Makemodule.am
 include png/Makemodule.am
 include qoi/Makemodule.am
+include readimage/Makemodule.am
 include uhdr/Makemodule.am
 include tga/Makemodule.am
 include tiff/Makemodule.am
@@ -114,6 +116,7 @@ CLEANFILES += \
 	*.heif \
 	*.jpeg \
 	*.jpg \
+	*.jxl \
 	*.png \
 	*.tga \
 	*.tiff \
