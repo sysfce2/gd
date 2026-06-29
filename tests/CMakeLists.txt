@@ -93,6 +93,7 @@ if (BUILD_TEST)
 		qoi
 		readimage
 		uhdr
+		vector2d
 		tga
 		tiff
 		wbmp
