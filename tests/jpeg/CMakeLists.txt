@@ -1,5 +1,6 @@
 IF(JPEG_FOUND)
 LIST(APPEND TESTS_FILES
+	jpeg_conformance
 	jpeg_empty_file
 	jpeg_im2im
 	jpeg_ptr_double_free

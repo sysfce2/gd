@@ -1,5 +1,6 @@
 if HAVE_LIBJPEG
 libgd_test_programs += \
+	jpeg/jpeg_conformance \
 	jpeg/jpeg_empty_file \
 	jpeg/jpeg_im2im \
 	jpeg/jpeg_null \
@@ -16,6 +17,7 @@ endif
 
 EXTRA_DIST += \
 	jpeg/CMakeLists.txt \
+	jpeg/conformance \
 	jpeg/conv_test.jpeg \
 	jpeg/conv_test_exp.png \
 	jpeg/empty.jpeg \
