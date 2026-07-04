@@ -76,6 +76,7 @@ if(ENABLE_CPP)
 endif(ENABLE_CPP)
 
 # Static library just for utility programs.
+if (BUILD_PROGRAMS)
 SET (GD_PROGRAMS_LIB_SRC_FILES)
 
 if(MSVC)
@@ -83,6 +84,7 @@ if(MSVC)
 		getopt.c
 	)
 endif(MSVC)
+endif(BUILD_PROGRAMS)
 
 include(GNUInstallDirs)
 
@@ -103,9 +105,11 @@ if (BUILD_STATIC_LIBS)
 	endif()
 endif()
 
+if (BUILD_PROGRAMS)
 if (NOT "${GD_PROGRAMS_LIB_SRC_FILES}" STREQUAL "")
 	add_library(gd_programs_lib STATIC ${GD_PROGRAMS_LIB_SRC_FILES})
 endif()
+endif(BUILD_PROGRAMS)
 
 if (WIN32 AND NOT MINGW AND NOT MSYS)
   #	SET_TARGET_PROPERTIES(${GD_LIB} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:msvcrt.lib")
@@ -182,6 +186,7 @@ if (ZLIB_FOUND)
 	set(GD_PROGRAMS ${GD_PROGRAMS} gd2copypal gd2togif giftogd2)
 endif()
 
+if (BUILD_PROGRAMS)
 foreach(program ${GD_PROGRAMS})
     add_executable(${program} ${program}.c)
 
@@ -194,8 +199,10 @@ foreach(program ${GD_PROGRAMS})
 		target_link_libraries(${program} gd_programs_lib)
 	endif()
 endforeach(program)
+	set(GD_INSTALL_TARGETS ${GD_PROGRAMS})
+	install(PROGRAMS bdftogd DESTINATION bin)
+endif(BUILD_PROGRAMS)
 
-set(GD_INSTALL_TARGETS ${GD_PROGRAMS})
 if (BUILD_SHARED_LIBS)
 	set(GD_INSTALL_TARGETS ${GD_INSTALL_TARGETS} ${GD_LIB})
 endif()
@@ -207,7 +214,6 @@ install(TARGETS ${GD_INSTALL_TARGETS}
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(PROGRAMS bdftogd DESTINATION bin)
 install(FILES
 	gd.h
 	gd_vector2d.h

@@ -69,10 +69,13 @@ BGD_DECLARE(void) gdContextSetSource(gdContextPtr context, gdPaintPtr source);
 BGD_DECLARE(void) gdContextSetOperator(gdContextPtr context, gdCompositeOperator op);
 BGD_DECLARE(void) gdContextSetOpacity(gdContextPtr context, double opacity);
 BGD_DECLARE(void) gdContextMoveTo(gdContextPtr context, double x, double y);
+BGD_DECLARE(void) gdContextRelMoveTo(gdContextPtr context, double dx, double dy);
 BGD_DECLARE(void) gdContextLineTo(gdContextPtr context, double x, double y);
-BGD_DECLARE(void) gdContextRelLineTo(gdContextPtr context, double x, double y);
+BGD_DECLARE(void) gdContextRelLineTo(gdContextPtr context, double dx, double dy);
 BGD_DECLARE(void) gdContextCurveTo(gdContextPtr context, double x1, double y1, double x2, double y2, double x3, double y3);
+BGD_DECLARE(void) gdContextRelCurveTo(gdContextPtr context, double dx1, double dy1, double dx2, double dy2, double dx3, double dy3);
 BGD_DECLARE(void) gdContextQuadTo(gdContextPtr context, double x1, double y1, double x2, double y2);
+BGD_DECLARE(void) gdContextRelQuadTo(gdContextPtr context, double dx1, double dy1, double dx2, double dy2);
 BGD_DECLARE(void) gdContextArc(gdContextPtr context, double cx, double cy, double radius, double a0, double a1);
 BGD_DECLARE(void) gdContextNegativeArc(gdContextPtr context, double cx, double cy, double radius, double a0, double a1);
 BGD_DECLARE(void) gdContextRectangle(gdContextPtr context, double x, double y, double width, double height);
@@ -385,6 +388,7 @@ BGD_DECLARE(void) gdPathTransform(gdPathPtr path, const gdPathMatrixPtr matrix);
  *   y    - The vertical coordinate.
  */
 BGD_DECLARE(void) gdPathMoveTo(gdPathPtr path, double x, double y);
+BGD_DECLARE(void) gdPathRelMoveTo(gdPathPtr path, double dx, double dy);
 
 /**
  * Function: gdPathLineTo
@@ -423,6 +427,9 @@ BGD_DECLARE(void) gdPathRelLineTo(gdPathPtr path, double dx, double dy);
  *   y2   - The endpoint's vertical coordinate.
  */
 BGD_DECLARE(void) gdPathQuadTo(gdPathPtr path, double x1, double y1, double x2, double y2);
+BGD_DECLARE(void) gdPathRelQuadTo(gdPathPtr path, double dx1, double dy1, double dx2, double dy2);
+BGD_DECLARE(void) gdPathCurveTo(gdPathPtr path, double x1, double y1, double x2, double y2, double x3, double y3);
+BGD_DECLARE(void) gdPathRelCurveTo(gdPathPtr path, double dx1, double dy1, double dx2, double dy2, double dx3, double dy3);
 
 /**
  * Function: gdPathCurveTo

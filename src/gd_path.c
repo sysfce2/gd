@@ -573,6 +573,12 @@ BGD_DECLARE(void) gdPathMoveTo(gdPathPtr path, double x, double y)
     path->start.y = y;
 }
 
+BGD_DECLARE(void) gdPathRelMoveTo(gdPathPtr path, double dx, double dy)
+{
+    _relativeTo(path, &dx, &dy);
+    gdPathMoveTo(path, dx, dy);
+}
+
 BGD_DECLARE(void) gdPathLineTo(gdPathPtr path, double x, double y)
 {
     const gdPathOps op = gdPathOpsLineTo;
@@ -607,6 +613,14 @@ BGD_DECLARE(void) gdPathCurveTo(gdPathPtr path, double x1, double y1, double x2,
     gdArrayAppend(&path->points, &points[2]);
 }
 
+BGD_DECLARE(void) gdPathRelCurveTo(gdPathPtr path, double dx1, double dy1, double dx2, double dy2, double dx3, double dy3)
+{
+    _relativeTo(path, &dx1, &dy1);
+    _relativeTo(path, &dx2, &dy2);
+    _relativeTo(path, &dx3, &dy3);
+    gdPathCurveTo(path, dx1, dy1, dx2, dy2, dx3, dy3);
+}
+
 BGD_DECLARE(void) gdPathQuadTo(gdPathPtr path, double x1, double y1, double x2, double y2)
 {
     const gdPathOps op = gdPathOpsQuadTo;
@@ -615,6 +629,13 @@ BGD_DECLARE(void) gdPathQuadTo(gdPathPtr path, double x1, double y1, double x2, 
     gdArrayAppend(&path->elements, &op);
     gdArrayAppend(&path->points, &points[0]);
     gdArrayAppend(&path->points, &points[1]);
+}
+
+BGD_DECLARE(void) gdPathRelQuadTo(gdPathPtr path, double dx1, double dy1, double dx2, double dy2)
+{
+    _relativeTo(path, &dx1, &dy1);
+    _relativeTo(path, &dx2, &dy2);
+    gdPathQuadTo(path, dx1, dy1, dx2, dy2);
 }
 
 /*

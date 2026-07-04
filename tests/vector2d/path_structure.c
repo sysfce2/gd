@@ -63,6 +63,39 @@ static void test_path_representation(void)
     gdPathDestroy(path);
 }
 
+static void test_relative_path_operations(void)
+{
+    gdPathPtr path = gdPathCreate();
+
+    gdPathRelMoveTo(path, 2, 3);
+    gdPathRelLineTo(path, 4, 5);
+    gdPathRelQuadTo(path, 1, 2, 3, 4);
+    gdPathRelCurveTo(path, -1, -2, 5, 6, 7, 8);
+    gdPathClose(path);
+    gdPathRelLineTo(path, 10, 20);
+
+    gdTestAssert(gdArrayNumElements(&path->elements) == 6);
+    gdTestAssert(gdArrayNumElements(&path->points) == 9);
+    gdTestAssert(path->contours == 1);
+    gdTestAssert(op_at(path, 0) == gdPathOpsMoveTo);
+    gdTestAssert(op_at(path, 1) == gdPathOpsLineTo);
+    gdTestAssert(op_at(path, 2) == gdPathOpsQuadTo);
+    gdTestAssert(op_at(path, 3) == gdPathOpsCubicTo);
+    gdTestAssert(op_at(path, 4) == gdPathOpsClose);
+    gdTestAssert(op_at(path, 5) == gdPathOpsLineTo);
+    assert_point(path, 0, 2, 3);
+    assert_point(path, 1, 6, 8);
+    assert_point(path, 2, 7, 10);
+    assert_point(path, 3, 9, 12);
+    assert_point(path, 4, 8, 10);
+    assert_point(path, 5, 14, 18);
+    assert_point(path, 6, 16, 20);
+    assert_point(path, 7, 2, 3);
+    assert_point(path, 8, 12, 23);
+
+    gdPathDestroy(path);
+}
+
 static void test_dash_structure(void)
 {
     const double values[] = {10, 5};
@@ -146,6 +179,7 @@ static void test_stroke_caps_and_matrix(void)
 int main(void)
 {
     test_path_representation();
+    test_relative_path_operations();
     test_dash_structure();
     test_stroke_caps_and_matrix();
     return gdNumFailures();

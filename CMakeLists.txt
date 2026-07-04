@@ -28,14 +28,19 @@ OPTION(ENABLE_RAQM "Enable RAQM support" 0)
 OPTION(ENABLE_ASAN "Enable (gcc) ASAN support" 0)
 OPTION(ENABLE_CPP "Enable CPP GD API" 1)
 OPTION(VERBOSE_MAKEFILE "Enable CMAKE_VERBOSE_MAKEFILE" 0)
+OPTION(BUILD_TESTS "Build tests" 1)
+OPTION(BUILD_EXAMPLES "Build examples" 1)
+OPTION(BUILD_PROGRAMS "Build programs" 1)
+OPTION(BUILD_DOCS "Build docs" 1)
+OPTION(BUILD_CPACK "Build CPACK" 1)
 
 if (VERBOSE_MAKEFILE)
 	set(CMAKE_VERBOSE_MAKEFILE ON)
 endif (VERBOSE_MAKEFILE)
 
-if (BUILD_TEST)
+if (BUILD_TESTS)
 	ENABLE_TESTING()
-endif(BUILD_TEST)
+endif(BUILD_TESTS)
 
 # if you would like to pass C flags to the compiler, then just
 # - specify -DCMAKE_C_FLAGS=... on invocation of cmake, or
@@ -109,9 +114,9 @@ else (USE_EXT_GD)
 
 	MACRO(GV VER VAR)
 		file (STRINGS "src/gd.h" _VERSION_LINE REGEX "define[ ]+GD_${VER}_VERSION")
-		if ( _VERSION_LINE )
-			string ( REGEX REPLACE ".*define[ ]+GD_${VER}_VERSION[ ]+\"?([^ \"]*)\"?[ ]+.*" "\\1" ${VAR} "${_VERSION_LINE}" )
-		endif ()
+		if (_VERSION_LINE)
+			string ( REGEX REPLACE ".*define[ ]+GD_${VER}_VERSION[ ]+\"?([0-9]*).*" "\\1" ${VAR} "${_VERSION_LINE}" )
+		endif (_VERSION_LINE)
 	ENDMACRO(GV)
 
 	GV(MAJOR GDLIB_MAJOR)
@@ -422,12 +427,18 @@ else (USE_EXT_GD)
 	add_subdirectory(src)
 endif (USE_EXT_GD)
 
+if(BUILD_TESTS)
 add_subdirectory(tests)
+endif (BUILD_TESTS)
+if(BUILD_EXAMPLES)
 add_subdirectory(examples)
+endif(BUILD_EXAMPLES)
+if(BUILD_DOCS)
 add_subdirectory(docs)
+endif(BUILD_DOCS)
 
 add_custom_target(distclean ${GD_SOURCE_DIR}/cmake/distclean.sh)
-
+if(BUILD_CPACK)
 SET(CPACK_PACKAGE_NAME "libgd")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "libGD, powerful and easy to use graphic library")
 SET(CPACK_PACKAGE_VENDOR "https://libgd.github.io")
@@ -440,15 +451,17 @@ if(WIN32)
 else(WIN32)
 	set(CPACK_GENERATOR TGZ)
 endif(WIN32)
+endif (BUILD_CPACK)
 
-
+if(BUILD_DOCS)
 INSTALL(FILES docs/INSTALL DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES docs/README.JPN DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES docs/README.CMAKE DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES docs/README.TESTING DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES docs/README.TXT DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
+endif(BUILD_DOCS)
 
-
+if(BUILD_EXAMPLES)
 INSTALL(FILES examples/arc.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES examples/copyrotated.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES examples/crop.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
@@ -469,8 +482,9 @@ INSTALL(FILES examples/tiffread.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLI
 INSTALL(FILES examples/tiff_write_pages.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES examples/uhdr.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
 INSTALL(FILES examples/windows.c DESTINATION share/doc/gd-${GDLIB_MAJOR}.${GDLIB_MINOR})
+endif(BUILD_EXAMPLES)
 
-
+if(BUILD_CPACK)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING")
 
 set(CPACK_SOURCE_GENERATOR TGZ)
@@ -484,3 +498,4 @@ set(CPACK_SOURCE_IGNORE_FILES
 )
 install(FILES ${top_level_DOCFILES} DESTINATION ${DOC_DIR})
 INCLUDE(CPack)
+endif(BUILD_CPACK)
