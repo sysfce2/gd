@@ -301,11 +301,12 @@ static void assert_case(const jpeg_case *test) {
 #endif
 
 	if (test->subdirectory == NULL) {
-		fp = gdTestFileOpenX("jpeg", "conformance", test->directory,
-						 test->filename, NULL);
+		fp = gdTestFileOpenX("conformance", "jpeg", "conformance",
+						 test->directory, test->filename, NULL);
 	} else {
-		fp = gdTestFileOpenX("jpeg", "conformance", test->directory,
-						 test->subdirectory, test->filename, NULL);
+		fp = gdTestFileOpenX("conformance", "jpeg", "conformance",
+						 test->directory, test->subdirectory, test->filename,
+						 NULL);
 	}
 	gdTestAssertMsg(fp != NULL, "cannot open JPEG corpus file: %s\n",
 					test->filename);

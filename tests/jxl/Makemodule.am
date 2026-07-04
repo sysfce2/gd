@@ -1,7 +1,11 @@
 if HAVE_LIBJXL
+if HAVE_JXL_CONFORMANCE
+libgd_test_programs += \
+	jxl/jxl_conformance
+endif
+
 libgd_test_programs += \
 	jxl/jxl_null \
-	jxl/jxl_conformance \
 	jxl/jxl_im2im \
 	jxl/jxl_lossless_im2im \
 	jxl/jxl_alpha \
@@ -18,7 +22,6 @@ EXTRA_DIST += \
 	jxl/Makemodule.am \
 	jxl/jxl_test_helpers.h \
 	jxl/generate_test_images.sh \
-	jxl/conformance \
 	jxl/basic.jxl \
 	jxl/3x3_srgb_lossless.jxl \
 	jxl/3x3_srgb_lossy.jxl \
