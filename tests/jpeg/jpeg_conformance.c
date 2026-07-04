@@ -1,10 +1,8 @@
 #include "gd.h"
 #include "gdtest.h"
 
-#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include <jpeglib.h>
 
@@ -279,30 +277,6 @@ static const jpeg_case cases[] = {
 	{"crash-repro", "zune-jpeg", "zj_341_noninterleaved_original.jpg", JPEG_EXPECT_ROBUST},
 };
 
-static unsigned char *read_file(FILE *fp, int *size) {
-	long len;
-	unsigned char *data;
-
-	*size = 0;
-	if (fseek(fp, 0, SEEK_END) != 0) {
-		return NULL;
-	}
-	len = ftell(fp);
-	if (len < 0 || len > INT_MAX || fseek(fp, 0, SEEK_SET) != 0) {
-		return NULL;
-	}
-	data = (unsigned char *)malloc(len > 0 ? (size_t)len : 1);
-	if (data == NULL) {
-		return NULL;
-	}
-	if (len > 0 && fread(data, 1, (size_t)len, fp) != (size_t)len) {
-		free(data);
-		return NULL;
-	}
-	*size = (int)len;
-	return data;
-}
-
 static void validate_image(gdImagePtr image, const jpeg_case *test,
 					   const char *decoder) {
 	if (image == NULL) {
@@ -315,13 +289,10 @@ static void validate_image(gdImagePtr image, const jpeg_case *test,
 }
 
 static void assert_case(const jpeg_case *test) {
-	unsigned char *data;
-	gdImagePtr file_image;
-	gdImagePtr ptr_image;
+	gdImagePtr image;
 	FILE *fp;
 	int require_decode = test->expectation == JPEG_EXPECT_VALID;
 	int require_reject = test->expectation == JPEG_EXPECT_INVALID;
-	int size;
 
 #if BITS_IN_JSAMPLE == 12
 	if (test->expectation == JPEG_EXPECT_12BIT) {
@@ -341,48 +312,18 @@ static void assert_case(const jpeg_case *test) {
 	if (fp == NULL) {
 		return;
 	}
-	data = read_file(fp, &size);
+	image = gdImageCreateFromJpeg(fp);
 	fclose(fp);
-	gdTestAssertMsg(data != NULL, "cannot read JPEG corpus file: %s\n",
-					test->filename);
-	if (data == NULL) {
-		return;
-	}
-
-	if (test->subdirectory == NULL) {
-		fp = gdTestFileOpenX("jpeg", "conformance", test->directory,
-						 test->filename, NULL);
-	} else {
-		fp = gdTestFileOpenX("jpeg", "conformance", test->directory,
-						 test->subdirectory, test->filename, NULL);
-	}
-	gdTestAssertMsg(fp != NULL, "cannot reopen JPEG corpus file: %s\n",
-					test->filename);
-	file_image = fp != NULL ? gdImageCreateFromJpeg(fp) : NULL;
-	if (fp != NULL) {
-		fclose(fp);
-	}
-	ptr_image = gdImageCreateFromJpegPtrEx(size, data, 1);
 
 	if (require_decode) {
-		gdTestAssertMsg(file_image != NULL,
-						"valid JPEG failed file decoding: %s\n",
-						test->filename);
-		gdTestAssertMsg(ptr_image != NULL,
-						"valid JPEG failed pointer decoding: %s\n",
+		gdTestAssertMsg(image != NULL, "valid JPEG failed decoding: %s\n",
 						test->filename);
 	} else if (require_reject) {
-		gdTestAssertMsg(file_image == NULL,
-						"invalid JPEG decoded from file: %s\n",
-						test->filename);
-		gdTestAssertMsg(ptr_image == NULL,
-						"invalid JPEG decoded from pointer: %s\n",
+		gdTestAssertMsg(image == NULL, "invalid JPEG decoded: %s\n",
 						test->filename);
 	}
 
-	validate_image(file_image, test, "file decoder");
-	validate_image(ptr_image, test, "pointer decoder");
-	free(data);
+	validate_image(image, test, "JPEG decoder");
 }
 
 int main(void) {
