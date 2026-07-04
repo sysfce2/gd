@@ -25,13 +25,14 @@ static int has_jxl_suffix(const char *name) {
 	return len > 4 && strcmp(name + len - 4, ".jxl") == 0;
 }
 
-static unsigned char *read_file(const char *path, int *size) {
+static unsigned char *read_file(const char *directory, const char *filename,
+								int *size) {
 	FILE *fp;
 	long len;
 	unsigned char *data;
 
 	*size = 0;
-	fp = gdTestFileOpen(path);
+	fp = gdTestFileOpenX("jxl", "conformance", directory, filename, NULL);
 	if (fp == NULL) {
 		return NULL;
 	}
@@ -59,15 +60,17 @@ static unsigned char *read_file(const char *path, int *size) {
 	return data;
 }
 
-static void assert_valid_file(const char *path) {
+static void assert_valid_file(const char *directory, const char *filename) {
 	unsigned char *data;
 	gdJxlAnimReaderPtr reader;
 	gdImagePtr image;
 	int delay;
 	int frames = 0;
 	int size;
+	char path[4096];
 
-	data = read_file(path, &size);
+	snprintf(path, sizeof(path), "%s/%s", directory, filename);
+	data = read_file(directory, filename, &size);
 	gdTestAssertMsg(data != NULL, "cannot read JXL corpus file: %s\n", path);
 	if (data == NULL) {
 		return;
@@ -101,14 +104,16 @@ static void assert_valid_file(const char *path) {
 	free(data);
 }
 
-static void assert_invalid_file(const char *path) {
+static void assert_invalid_file(const char *directory, const char *filename) {
 	unsigned char *data;
 	gdJxlAnimReaderPtr reader;
 	gdImagePtr image;
 	int delay = -1;
 	int size;
+	char path[4096];
 
-	data = read_file(path, &size);
+	snprintf(path, sizeof(path), "%s/%s", directory, filename);
+	data = read_file(directory, filename, &size);
 	gdTestAssertMsg(data != NULL, "cannot read invalid JXL file: %s\n", path);
 	if (data == NULL) {
 		return;
@@ -156,7 +161,6 @@ static int scan_category(const char *root, const corpus_category *category) {
 
 	while ((entry = readdir(handle)) != NULL) {
 		char path[4096];
-		char relative_path[4096];
 
 		if (!has_jxl_suffix(entry->d_name)) {
 			continue;
@@ -167,18 +171,11 @@ static int scan_category(const char *root, const corpus_category *category) {
 						   entry->d_name);
 			continue;
 		}
-		if (snprintf(relative_path, sizeof(relative_path),
-					 "jxl/conformance/%s/%s", category->name,
-					 entry->d_name) >= (int)sizeof(relative_path)) {
-			gdTestErrorMsg("relative JXL corpus path is too long: %s/%s\n",
-						   category->name, entry->d_name);
-			continue;
-		}
 		files++;
 		if (category->expectation == JXL_EXPECT_VALID) {
-			assert_valid_file(relative_path);
+			assert_valid_file(category->name, entry->d_name);
 		} else {
-			assert_invalid_file(relative_path);
+			assert_invalid_file(category->name, entry->d_name);
 		}
 	}
 	closedir(handle);
