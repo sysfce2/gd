@@ -1,4 +1,9 @@
 if HAVE_LIBJXL
+if HAVE_JXL_CONFORMANCE
+libgd_test_programs += \
+	jxl/jxl_conformance
+endif
+
 libgd_test_programs += \
 	jxl/jxl_null \
 	jxl/jxl_im2im \

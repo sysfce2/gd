@@ -1,0 +1,3 @@
+[submodule "tests/conformance"]
+	path = tests/conformance
+	url = https://github.com/libgd/libgd-test-corpus.git

@@ -365,6 +365,13 @@ if test "$mingw_cv_win32_host" = yes; then
 fi
 AM_CONDITIONAL([MINGW_UCRT64], [test "$gd_mingw_ucrt64" = yes])
 
+AS_IF([test -d "$srcdir/tests/conformance/jpeg/conformance"],
+  [gd_jpeg_conformance=yes], [gd_jpeg_conformance=no])
+AS_IF([test -d "$srcdir/tests/conformance/jxl/conformance"],
+  [gd_jxl_conformance=yes], [gd_jxl_conformance=no])
+AM_CONDITIONAL([HAVE_JPEG_CONFORMANCE], [test "$gd_jpeg_conformance" = yes])
+AM_CONDITIONAL([HAVE_JXL_CONFORMANCE], [test "$gd_jxl_conformance" = yes])
+
 dnl Enable -Wall if possible.  Do it after all other tests.
 AX_CFLAGS_WARN_ALL
 
@@ -384,8 +391,10 @@ AC_MSG_RESULT([
    Support for Zlib:                 $gd_with_LIBZ
    Support for PNG library:          $gd_with_LIBPNG
    Support for JPEG library:         $gd_with_LIBJPEG
+   JPEG conformance corpus:          $gd_jpeg_conformance
    Support for WebP library:         $gd_with_LIBWEBP
    Support for JPEG XL library:      $gd_with_LIBJXL
+   JPEG XL conformance corpus:       $gd_jxl_conformance
    Support for HEIF library:         $gd_with_LIBHEIF
    Support for AVIF library:         $gd_with_LIBAVIF
   Support for UltraHDR library:     $gd_with_LIBUHDR

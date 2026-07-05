@@ -22,6 +22,8 @@ jobs:
       COVERAGE_FLAGS: --coverage -O0 -g
     steps:
     - uses: actions/checkout@v5
+      with:
+        submodules: true
 
     - name: Update apt
       run: sudo apt-get update -qq

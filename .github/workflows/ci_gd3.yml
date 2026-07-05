@@ -47,6 +47,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          submodules: true
 
       - name: Update apt
         if: contains(matrix.os, 'ubuntu')

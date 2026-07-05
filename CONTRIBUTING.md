@@ -157,6 +157,18 @@ We love unit tests. Every bugfix, new API, etc... should include a test update
 to make sure future work doesn't break things or regress. We want to fix bugs
 just once, not over and over again.
 
+The large codec conformance corpus is maintained in the
+`libgd-test-corpus` repository and pinned as the `tests/conformance`
+submodule. It is optional for normal builds. Initialize it before configuring
+libgd when running the full conformance suite:
+
+```sh
+git submodule update --init tests/conformance
+```
+
+When the submodule is absent, CMake and Autotools report that the corpus was
+not found and omit only the corresponding conformance tests.
+
 Note that we say "should". While we really like tests, we understand that not
 all changes are trivial to verify.
 
