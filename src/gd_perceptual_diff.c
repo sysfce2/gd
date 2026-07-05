@@ -28,9 +28,9 @@ static double pixel_diff_yiq(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uin
     return 0.5053 * y * y + 0.299 * i * i + 0.1957 * q * q;
 }
 
-int gdImagePerceptualDiff(gdImagePtr image1, gdImagePtr image2, double threshold,
-                          const gdImagePerceptualDiffOptions *options, gdImagePtr *diff_image,
-                          gdImagePerceptualDiffResult *result)
+BGD_DECLARE(int) gdImagePerceptualDiff(gdImagePtr image1, gdImagePtr image2, double threshold,
+                      const gdImagePerceptualDiffOptions *options, gdImagePtr *diff_image,
+                      gdImagePerceptualDiffResult *result)
 {
     gdImageDiffMode mode = GD_IMAGE_DIFF_OVERLAY;
     int highlight_color = gdTrueColorAlpha(255, 0, 0, 0);
