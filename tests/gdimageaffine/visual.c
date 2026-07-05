@@ -52,7 +52,7 @@ int main() {
 	gdImagePtr src = NULL, actual = NULL, ref = NULL, diff = NULL;
 	gdRect src_region = {0, 0, 40, 30};
 	double rotate[6], scale[6], shear[6], translate[6], tmp[6], mixed[6];
-	CuTestImageResult result = {0, 0};
+	gdImagePerceptualDiffResult result;
 	char *ref_path = NULL;
 	int error = 0;
 
@@ -106,13 +106,11 @@ int main() {
 		goto done;
 	}
 
-	diff = gdImageCreateTrueColor(gdImageSX(actual), gdImageSY(actual));
-	if (!gdTestAssert(diff != NULL)) {
+	if (!gdTestAssert(gdImagePerceptualDiff(actual, ref, 0.05, NULL, &diff,
+										  &result))) {
 		error = 1;
 		goto done;
 	}
-
-	gdTestImagePerceptualDiff(actual, ref, diff, &result, 0.05);
 	if (result.pixels_changed > 0) {
 		write_png("gdimageaffine_visual_diff.png", diff);
 		write_png("/tmp/gdimageaffine_visual_actual.png", actual);

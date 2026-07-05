@@ -5,6 +5,7 @@ SET (LIBGD_SRC_FILES
 	gd_color.c
 	gd_color_map.c
 	gd_color_match.c
+	gd_perceptual_diff.c
 	gd_compositor.c
 	gd_crop.c
 	gd_draw.c

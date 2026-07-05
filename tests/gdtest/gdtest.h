@@ -48,10 +48,6 @@ FILE *gdTestFileOpenX(const char *path, ...);
 void gdTestImageDiff(gdImagePtr buf_a, gdImagePtr buf_b, gdImagePtr buf_diff,
 					 CuTestImageResult *result_ret);
 
-void gdTestImagePerceptualDiff(gdImagePtr img1, gdImagePtr img2,
-							   gdImagePtr buf_diff,
-							   CuTestImageResult *result_ret, double threshold);
-
 int gdTestImageCompareToImage(const char *file, unsigned int line,
 							  const char *message, gdImagePtr expected,
 							  gdImagePtr actual);

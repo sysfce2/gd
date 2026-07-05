@@ -155,18 +155,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	gdImagePtr buf_diff = NULL;
-	if (diffpath) {
-		buf_diff = gdImageCreateTrueColor(gdImageSX(img1), gdImageSY(img1));
-		if (!buf_diff) {
-			fprintf(stderr, "Failed to allocate diff image\n");
-			gdImageDestroy(img1);
-			gdImageDestroy(img2);
-			return 2;
-		}
+	gdImagePerceptualDiffResult result;
+	if (!gdImagePerceptualDiff(img1, img2, threshold, NULL,
+								diffpath ? &buf_diff : NULL, &result)) {
+		fprintf(stderr, "Failed to compare images\n");
+		gdImageDestroy(img1);
+		gdImageDestroy(img2);
+		return 2;
 	}
-
-	CuTestImageResult result = {0, 0};
-	gdTestImagePerceptualDiff(img1, img2, buf_diff, &result, threshold);
 
 	if (!quiet) {
 		printf("Pixels changed: %d / %d\n", result.pixels_changed,

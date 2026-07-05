@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 {
 	gdImagePtr absolute;
 	gdImagePtr relative;
-	CuTestImageResult result = {0, 0};
+	gdImagePerceptualDiffResult result;
 
 	if (argc == 3 && strcmp(argv[1], "--write-reference") == 0)
 		return write_reference(argv[2]);
@@ -153,8 +153,8 @@ int main(int argc, char **argv)
 	relative = render_scene(1);
 	gdTestAssert(absolute != NULL && relative != NULL);
 	if (absolute && relative) {
-		gdTestImagePerceptualDiff(absolute, relative, NULL, &result,
-			PERCEPTUAL_THRESHOLD);
+		gdTestAssert(gdImagePerceptualDiff(absolute, relative,
+			PERCEPTUAL_THRESHOLD, NULL, NULL, &result));
 		gdTestAssertMsg(result.pixels_changed == 0,
 			"absolute and relative paths differ at %u pixels",
 			result.pixels_changed);

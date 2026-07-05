@@ -19,7 +19,7 @@ int main() {
 	int i;
 	int brect[8];
 	int error = 0;
-	CuTestImageResult result = {0, 0};
+	gdImagePerceptualDiffResult result;
 
 	/* disable subpixel hinting */
 	putenv("FREETYPE_PROPERTIES=truetype:interpreter-version=35");
@@ -54,8 +54,12 @@ int main() {
 		error = 1;
 		goto done;
 	}
-	gdImagePtr buf_diff = gdImageCreateTrueColor(gdImageSX(im), gdImageSY(im));
-	gdTestImagePerceptualDiff(im, ref, buf_diff, &result, PERCEPTUAL_THRESHOLD);
+	gdImagePtr buf_diff = NULL;
+	if (!gdTestAssert(gdImagePerceptualDiff(im, ref, PERCEPTUAL_THRESHOLD, NULL,
+										  &buf_diff, &result))) {
+		error = 1;
+		goto done;
+	}
 	if (result.pixels_changed > MAX_PERCEPTUAL_PIXELS_CHANGED) {
 		FILE *fp = fopen("gdimagestringft_bbox_diff.png", "wb");
 		if (fp) {

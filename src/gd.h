@@ -2151,6 +2151,40 @@ BGD_DECLARE(void *) gdDPExtractData(gdIOCtxPtr ctx, int *size);
 /* Image comparison definitions */
 BGD_DECLARE(int) gdImageCompare(gdImagePtr im1, gdImagePtr im2);
 
+typedef enum {
+    GD_IMAGE_DIFF_NONE,
+    GD_IMAGE_DIFF_OVERLAY,
+    GD_IMAGE_DIFF_MASK
+} gdImageDiffMode;
+
+typedef struct {
+    gdImageDiffMode mode;
+    int highlight_color;
+} gdImagePerceptualDiffOptions;
+
+typedef struct {
+    unsigned int pixels_changed;
+    /* Largest normalized perceptual distance, in the range 0.0 to 1.0. */
+    double maximum_delta;
+} gdImagePerceptualDiffResult;
+
+/*
+ * Compare two equally sized images using a perceptual YIQ distance.
+ *
+ * A NULL options pointer selects an overlay with opaque red highlights. A
+ * non-NULL diff_image receives a newly allocated truecolor image for overlay
+ * and mask modes; the caller owns it and must call gdImageDestroy(). Passing
+ * NULL for diff_image computes statistics only. The result is always reset,
+ * including on failure.
+ *
+ * Returns 1 on success, or 0 for invalid arguments or allocation failure.
+ */
+BGD_DECLARE(int)
+gdImagePerceptualDiff(gdImagePtr image1, gdImagePtr image2, double threshold,
+                      const gdImagePerceptualDiffOptions *options,
+                      gdImagePtr *diff_image,
+                      gdImagePerceptualDiffResult *result);
+
 BGD_DECLARE(void) gdImageFlipHorizontal(gdImagePtr im);
 BGD_DECLARE(void) gdImageFlipVertical(gdImagePtr im);
 BGD_DECLARE(void) gdImageFlipBoth(gdImagePtr im);

@@ -68,6 +68,7 @@ libgd_la_SOURCES = \
 	gd_color_map.c \
 	gd_color_map.h \
 	gd_color_match.c \
+	gd_perceptual_diff.c \
 	gd_compositor.c gd_compositor.h \
 	gd_crop.c \
 	gd_draw.c gd_draw_blend.c gd_draw_blend.h \

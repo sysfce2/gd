@@ -54,7 +54,7 @@ int main(void)
 		char reference_path[128];
 		gdImagePtr expected;
 		gdImagePtr actual = render_gd((gdCompositeOperator) op);
-		CuTestImageResult result = {0, 0};
+		gdImagePerceptualDiffResult result;
 		snprintf(reference_path, sizeof(reference_path),
 			"vector2d/operator_reference/%s.png", reference_names[op]);
 		expected = gdTestImageFromPng(reference_path);
@@ -62,7 +62,8 @@ int main(void)
 		gdTestAssertMsg(expected != NULL && actual != NULL,
 			"Could not render operator %s", operator_names[op]);
 		if (expected && actual) {
-			gdTestImagePerceptualDiff(expected, actual, NULL, &result, .01);
+			gdTestAssert(gdImagePerceptualDiff(expected, actual, .01, NULL,
+										  NULL, &result));
 			gdTestAssertMsg(result.pixels_changed == 0,
 				"%s differs from its reference at %u pixels",
 				operator_names[op], result.pixels_changed);

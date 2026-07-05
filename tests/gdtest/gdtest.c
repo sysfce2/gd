@@ -493,103 +493,6 @@ void gdTestImageDiff(gdImagePtr buf_a, gdImagePtr buf_b, gdImagePtr buf_diff,
 #undef UP_DIFF
 }
 
-// Perceptually compares two native GD images
-static inline uint8_t gd_alpha_to_opacity(int ga) {
-	return (uint8_t)(((127 - ga) * 255 + 63) / 127);
-}
-
-static inline uint8_t blend(uint8_t c, uint8_t a, uint8_t bg) {
-	return (uint8_t)((c * a + bg * (255 - a) + 127) / 255);
-}
-
-static inline double pixel_diff_yiq(uint8_t r1, uint8_t g1, uint8_t b1,
-									uint8_t r2, uint8_t g2, uint8_t b2) {
-	double dr = r1 - r2;
-	double dg = g1 - g2;
-	double db = b1 - b2;
-
-	double y = dr * 0.29889531 + dg * 0.58662247 + db * 0.11448223;
-	double i = dr * 0.59597799 - dg * 0.27417610 - db * 0.32180189;
-	double q = dr * 0.21147017 - dg * 0.52261711 + db * 0.31114694;
-
-	return 0.5053 * y * y + 0.299 * i * i + 0.1957 * q * q;
-}
-
-void gdTestImagePerceptualDiff(gdImagePtr img1, gdImagePtr img2,
-							   gdImagePtr buf_diff,
-							   CuTestImageResult *result_ret,
-							   double threshold) {
-	int width = gdImageSX(img1);
-	int height = gdImageSY(img1);
-	double max_delta = 35215.0 * threshold * threshold;
-	int alpha_threshold = (int)(threshold * 127);
-
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			int p1 = gdImageGetTrueColorPixel(img1, x, y);
-			int p2 = gdImageGetTrueColorPixel(img2, x, y);
-
-			int is_diff = 0;
-
-			if (p1 == p2) {
-				/* exact match, nothing to compute */
-			} else {
-				uint8_t r1 = gdTrueColorGetRed(p1);
-				uint8_t g1 = gdTrueColorGetGreen(p1);
-				uint8_t b1 = gdTrueColorGetBlue(p1);
-				int ga1 = gdTrueColorGetAlpha(p1);
-
-				uint8_t r2 = gdTrueColorGetRed(p2);
-				uint8_t g2 = gdTrueColorGetGreen(p2);
-				uint8_t b2 = gdTrueColorGetBlue(p2);
-				int ga2 = gdTrueColorGetAlpha(p2);
-
-				/* alpha delta check in GD native range before conversion */
-				if (abs(ga1 - ga2) > alpha_threshold) {
-					is_diff = 1;
-				} else {
-					uint8_t a1 = gd_alpha_to_opacity(ga1);
-					uint8_t a2 = gd_alpha_to_opacity(ga2);
-
-					/* both fully transparent, imperceptible */
-					if (a1 == 0 && a2 == 0) {
-						/* not a diff */
-					} else if (a1 > 250 && a2 > 250) {
-						/* both sufficiently opaque, skip compositing */
-						is_diff =
-							pixel_diff_yiq(r1, g1, b1, r2, g2, b2) > max_delta;
-					} else {
-						/* composite against white and black, take best case */
-						double delta_white = pixel_diff_yiq(
-							blend(r1, a1, 255), blend(g1, a1, 255),
-							blend(b1, a1, 255), blend(r2, a2, 255),
-							blend(g2, a2, 255), blend(b2, a2, 255));
-						double delta_black =
-							pixel_diff_yiq(blend(r1, a1, 0), blend(g1, a1, 0),
-										   blend(b1, a1, 0), blend(r2, a2, 0),
-										   blend(g2, a2, 0), blend(b2, a2, 0));
-						is_diff = MIN(delta_white, delta_black) > max_delta;
-					}
-				}
-			}
-
-			if (is_diff) {
-				result_ret->pixels_changed++;
-				if (buf_diff) {
-					gdImageSetPixel(buf_diff, x, y,
-									gdTrueColorAlpha(255, 0, 0, 0));
-				}
-			} else if (buf_diff) {
-				/* faded original for spatial context */
-				gdImageSetPixel(buf_diff, x, y,
-								gdTrueColorAlpha(gdTrueColorGetRed(p1),
-												 gdTrueColorGetGreen(p1),
-												 gdTrueColorGetBlue(p1), 102));
-			}
-		}
-	}
-}
-
 /* Return the largest difference between two corresponding pixels and
  * channels. */
 unsigned int gdMaxPixelDiff(gdImagePtr a, gdImagePtr b) {
@@ -732,7 +635,7 @@ int gdTestImagePerceptualCompareToFile(const char *file, unsigned int line,
 	unsigned int width_b, height_b;
 	gdImagePtr expected = NULL;
 	gdImagePtr surface_diff = NULL;
-	CuTestImageResult result = {0, 0};
+	gdImagePerceptualDiffResult result;
 	int res = 0;
 
 	(void)message;
@@ -761,13 +664,10 @@ int gdTestImagePerceptualCompareToFile(const char *file, unsigned int line,
 		goto done;
 	}
 
-	surface_diff = gdImageCreateTrueColor(width_a, height_a);
-	if (surface_diff == NULL) {
+	if (!gdImagePerceptualDiff(expected, actual, threshold, NULL, &surface_diff,
+								 &result)) {
 		goto done;
 	}
-
-	gdTestImagePerceptualDiff(expected, actual, surface_diff, &result,
-							  threshold);
 	if (result.pixels_changed > max_pixels_changed) {
 		char file_diff[255];
 		char file_out[1024];
