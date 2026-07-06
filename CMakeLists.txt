@@ -26,6 +26,7 @@ OPTION(ENABLE_AVIF "Enable AVIF support" 0)
 OPTION(ENABLE_ULTRAHDR "Enable UltraHDR support" 0)
 OPTION(ENABLE_RAQM "Enable RAQM support" 0)
 OPTION(ENABLE_ASAN "Enable (gcc) ASAN support" 0)
+OPTION(ENABLE_FUZZERS "Build libFuzzer harnesses (clang only)" 0)
 OPTION(ENABLE_CPP "Enable CPP GD API" 1)
 OPTION(VERBOSE_MAKEFILE "Enable CMAKE_VERBOSE_MAKEFILE" 0)
 OPTION(BUILD_TESTS "Build tests" 1)
@@ -52,6 +53,17 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
   else (ENABLE_ASAN)
   	SET(CMAKE_C_FLAGS_DEBUG "-g -Wall -Wextra -O0 ") # will be added to CMAKE_C_FLAGS when CMAKE_BUILD_TYPE is Debug
   endif (ENABLE_ASAN)
+endif()
+
+# Fuzzer support: clang-only, instruments the static lib with
+# -fsanitize=fuzzer-no-link,address,undefined so only the harness pulls in
+# libFuzzer main at link time.
+if (ENABLE_FUZZERS)
+  if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR "ENABLE_FUZZERS requires clang (set CC=clang). Found: ${CMAKE_C_COMPILER_ID}")
+  endif()
+  set(FUZZ_CFLAGS "-fsanitize=fuzzer-no-link,address,undefined;-g;-O1")
+  set(FUZZ_LDFLAGS "-fsanitize=fuzzer,address,undefined")
 endif()
 SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY
   ${PROJECT_BINARY_DIR}/Bin
@@ -399,6 +411,11 @@ else (USE_EXT_GD)
 	option(BUILD_SHARED_LIBS "Build shared libs" ON)
 	option(BUILD_STATIC_LIBS "Build static libs" OFF)
 
+	# Fuzzer harnesses link the static lib; force it on when fuzzing.
+	if (ENABLE_FUZZERS)
+		set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+	endif()
+
 	if (WIN32)
 		SET(GD_LIB libgd)
 		ADD_DEFINITIONS( -DWIN32 -D_WIN32 -DMSWIN32 -DBGDWIN32 -DWINVER=0x0500  -D_WIN32_WINNT=0x0500 -D_WIN32_IE=0x0600)
@@ -425,10 +442,20 @@ else (USE_EXT_GD)
 	INCLUDE_DIRECTORIES(before ${FONTCONFIG_INCLUDE_DIR})
 
 	add_subdirectory(src)
+
+	# Apply fuzzer instrumentation to the static lib objects only.
+	# fuzzer-no-link keeps libFuzzer main out of the lib; the harness supplies it at link time.
+	if (ENABLE_FUZZERS)
+		set_property(TARGET ${GD_LIB_STATIC} APPEND PROPERTY COMPILE_OPTIONS ${FUZZ_CFLAGS})
+	endif()
 endif (USE_EXT_GD)
 
 if(BUILD_TESTS)
 add_subdirectory(tests)
+# Fuzz harnesses live under tests/fuzzing; built only when both BUILD_TESTS and ENABLE_FUZZERS are on.
+if (ENABLE_FUZZERS)
+	add_subdirectory(tests/fuzzing)
+endif()
 endif (BUILD_TESTS)
 if(BUILD_EXAMPLES)
 add_subdirectory(examples)
