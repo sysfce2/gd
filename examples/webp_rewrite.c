@@ -56,11 +56,13 @@ int main(int argc, char **argv)
     while ((result = gdWebpReadNextImage(reader, &frameInfo, &image)) == 1) {
         if (!gdWebpWriteAddImage(writer, image, frameInfo.duration)) {
             fprintf(stderr, "cannot add frame %d\n", frameInfo.frameIndex);
+            gdImageDestroy(image);
             gdWebpWriteClose(writer);
             fclose(out);
             gdWebpReadClose(reader);
             return 1;
         }
+        gdImageDestroy(image);
     }
     gdWebpWriteClose(writer);
     fclose(out);

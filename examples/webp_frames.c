@@ -57,9 +57,11 @@ int main(int argc, char **argv)
                frameInfo.frameIndex, frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height,
                frameInfo.duration, frameInfo.dispose, frameInfo.blend, frameInfo.hasAlpha);
         if (!write_png(image, argv[2], frameCount++)) {
+            gdImageDestroy(image);
             gdWebpReadClose(webp);
             return 1;
         }
+        gdImageDestroy(image);
     }
     gdWebpReadClose(webp);
     printf("frames written: %d\n", frameCount);

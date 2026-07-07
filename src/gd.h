@@ -879,6 +879,11 @@ typedef struct {
 enum { gdWebpDisposeNone, gdWebpDisposeBackground };
 enum { gdWebpBlendAlpha, gdWebpBlendNone };
 
+#define GD_WEBP_DISPOSE_NONE gdWebpDisposeNone
+#define GD_WEBP_DISPOSE_BACKGROUND gdWebpDisposeBackground
+#define GD_WEBP_BLEND_ALPHA gdWebpBlendAlpha
+#define GD_WEBP_BLEND_NONE gdWebpBlendNone
+
 BGD_DECLARE(int) gdWebpIsAnimated(FILE *fd);
 BGD_DECLARE(int) gdWebpIsAnimatedCtx(gdIOCtxPtr in);
 BGD_DECLARE(int) gdWebpIsAnimatedPtr(int size, void *data);
@@ -891,7 +896,6 @@ BGD_DECLARE(int)
 gdWebpReadNextFrame(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *frame);
 BGD_DECLARE(int)
 gdWebpReadNextImage(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *image);
-BGD_DECLARE(gdImagePtr) gdWebpReadCloneImage(gdWebpReadPtr webp);
 BGD_DECLARE(gdWebpWritePtr)
 gdWebpWriteOpen(FILE *outFile, const gdWebpWriteOptions *options);
 BGD_DECLARE(gdWebpWritePtr)
@@ -1013,10 +1017,29 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile);
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data);
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifCtx(gdIOCtxPtr infile);
 
+BGD_DECLARE(void)
+gdImageHeifEx(gdImagePtr im, FILE *outFile, int quality, gdHeifCodec codec, gdHeifChroma chroma);
+BGD_DECLARE(void) gdImageHeif(gdImagePtr im, FILE *outFile);
+BGD_DECLARE(void *) gdImageHeifPtr(gdImagePtr im, int *size);
+BGD_DECLARE(void *)
+gdImageHeifPtrEx(gdImagePtr im, int *size, int quality, gdHeifCodec codec, gdHeifChroma chroma);
+BGD_DECLARE(void)
+gdImageHeifCtx(gdImagePtr im, gdIOCtxPtr outfile, int quality, gdHeifCodec codec,
+               gdHeifChroma chroma);
+
 /* AVIF */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromAvif(FILE *inFile);
 BGD_DECLARE(gdImagePtr) gdImageCreateFromAvifPtr(int size, void *data);
 BGD_DECLARE(gdImagePtr) gdImageCreateFromAvifCtx(gdIOCtxPtr infile);
+
+BGD_DECLARE(void) gdImageAvif(gdImagePtr im, FILE *outFile);
+BGD_DECLARE(void)
+gdImageAvifEx(gdImagePtr im, FILE *outFile, int quality, int speed);
+BGD_DECLARE(void *) gdImageAvifPtr(gdImagePtr im, int *size);
+BGD_DECLARE(void *)
+gdImageAvifPtrEx(gdImagePtr im, int *size, int quality, int speed);
+BGD_DECLARE(void)
+gdImageAvifCtx(gdImagePtr im, gdIOCtxPtr outfile, int quality, int speed);
 
 /* TIFF */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromTiff(FILE *inFile);
@@ -1392,25 +1415,6 @@ BGD_DECLARE(void *)
 gdImageWebpPtrEx(gdImagePtr im, int *size, int quantization);
 BGD_DECLARE(void)
 gdImageWebpCtx(gdImagePtr im, gdIOCtxPtr outfile, int quantization);
-
-BGD_DECLARE(void)
-gdImageHeifEx(gdImagePtr im, FILE *outFile, int quality, gdHeifCodec codec, gdHeifChroma chroma);
-BGD_DECLARE(void) gdImageHeif(gdImagePtr im, FILE *outFile);
-BGD_DECLARE(void *) gdImageHeifPtr(gdImagePtr im, int *size);
-BGD_DECLARE(void *)
-gdImageHeifPtrEx(gdImagePtr im, int *size, int quality, gdHeifCodec codec, gdHeifChroma chroma);
-BGD_DECLARE(void)
-gdImageHeifCtx(gdImagePtr im, gdIOCtxPtr outfile, int quality, gdHeifCodec codec,
-               gdHeifChroma chroma);
-
-BGD_DECLARE(void) gdImageAvif(gdImagePtr im, FILE *outFile);
-BGD_DECLARE(void)
-gdImageAvifEx(gdImagePtr im, FILE *outFile, int quality, int speed);
-BGD_DECLARE(void *) gdImageAvifPtr(gdImagePtr im, int *size);
-BGD_DECLARE(void *)
-gdImageAvifPtrEx(gdImagePtr im, int *size, int quality, int speed);
-BGD_DECLARE(void)
-gdImageAvifCtx(gdImagePtr im, gdIOCtxPtr outfile, int quality, int speed);
 
 /*
   Group: Types

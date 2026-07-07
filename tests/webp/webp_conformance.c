@@ -92,13 +92,18 @@ static void assert_animation_iterator(const char *path, int size,
 	while ((result = gdWebpReadNextImage(webp, &frameInfo, &image)) == 1) {
 		gdTestAssertMsg(image != NULL,
 						"WebP animation returned NULL frame image: %s\n", path);
-		gdTestAssertMsg(gdImageSX(image) == info.width,
-						"WebP animation frame width mismatch: %s\n", path);
-		gdTestAssertMsg(gdImageSY(image) == info.height,
-						"WebP animation frame height mismatch: %s\n", path);
+		if (image != NULL) {
+			gdTestAssertMsg(gdImageSX(image) == info.width,
+							"WebP animation frame width mismatch: %s\n", path);
+			gdTestAssertMsg(gdImageSY(image) == info.height,
+							"WebP animation frame height mismatch: %s\n", path);
+		}
 		gdTestAssertMsg(frameInfo.duration >= 0,
 						"WebP animation frame has negative duration: %s\n",
 						path);
+		if (image != NULL) {
+			gdImageDestroy(image);
+		}
 		frames++;
 	}
 	gdTestAssertMsg(result == 0,

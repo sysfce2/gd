@@ -36,8 +36,6 @@ struct gdWebpReadStruct {
     int imageIndex;
     int rawTimestamp;
     int imageTimestamp;
-    gdImagePtr rawFrame;
-    gdImagePtr canvas;
 };
 
 struct gdWebpWriteStruct {
@@ -144,28 +142,6 @@ static gdImagePtr WebpImageFromARGB(const uint8_t *argb, int width, int height)
         }
     }
     return im;
-}
-
-static gdImagePtr WebpCloneImage(gdImagePtr src)
-{
-    gdImagePtr dst;
-    int x, y;
-
-    if (src == NULL) {
-        return NULL;
-    }
-    dst = gdImageCreateTrueColor(gdImageSX(src), gdImageSY(src));
-    if (dst == NULL) {
-        return NULL;
-    }
-    gdImageAlphaBlending(dst, 0);
-    gdImageSaveAlpha(dst, src->saveAlphaFlag);
-    for (y = 0; y < gdImageSY(src); y++) {
-        for (x = 0; x < gdImageSX(src); x++) {
-            dst->tpixels[y][x] = gdImageGetPixel(src, x, y);
-        }
-    }
-    return dst;
 }
 
 static void WebpFillInfo(const WebPDemuxer *demux, gdWebpInfo *info)
@@ -512,12 +488,6 @@ BGD_DECLARE(void) gdWebpReadClose(gdWebpReadPtr webp)
     if (webp->demux != NULL) {
         WebPDemuxDelete(webp->demux);
     }
-    if (webp->rawFrame != NULL) {
-        gdImageDestroy(webp->rawFrame);
-    }
-    if (webp->canvas != NULL) {
-        gdImageDestroy(webp->canvas);
-    }
     gdFree(webp->data);
     gdFree(webp);
 }
@@ -536,6 +506,7 @@ gdWebpReadNextFrame(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *frame
 {
     uint8_t *rgba;
     int width, height;
+    gdImagePtr image;
 
     if (frame != NULL) {
         *frame = NULL;
@@ -553,24 +524,22 @@ gdWebpReadNextFrame(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *frame
         }
         webp->haveIter = 1;
     }
-    if (webp->rawFrame != NULL) {
-        gdImageDestroy(webp->rawFrame);
-        webp->rawFrame = NULL;
-    }
     rgba = WebPDecodeRGBA(webp->iter.fragment.bytes, webp->iter.fragment.size, &width, &height);
     if (rgba == NULL) {
         return -1;
     }
-    webp->rawFrame = WebpImageFromRGBA(rgba, width, height);
+    image = WebpImageFromRGBA(rgba, width, height);
     WebPFree(rgba);
-    if (webp->rawFrame == NULL) {
+    if (image == NULL) {
         return -1;
     }
     WebpFillFrameInfo(&webp->iter, webp->rawIndex, webp->rawTimestamp, info);
     webp->rawTimestamp += webp->iter.duration;
     webp->rawIndex++;
     if (frame != NULL) {
-        *frame = webp->rawFrame;
+        *frame = image;
+    } else {
+        gdImageDestroy(image);
     }
     return 1;
 }
@@ -583,6 +552,7 @@ gdWebpReadNextImage(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *image
     WebPIterator iter;
     int haveFrameInfo = 0;
     WebPAnimInfo animInfo;
+    gdImagePtr canvas;
 
     if (image != NULL) {
         *image = NULL;
@@ -615,12 +585,8 @@ gdWebpReadNextImage(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *image
         info->duration = duration;
         info->timestamp = webp->imageTimestamp;
     }
-    if (webp->canvas != NULL) {
-        gdImageDestroy(webp->canvas);
-        webp->canvas = NULL;
-    }
-    webp->canvas = WebpImageFromRGBA(rgba, (int)animInfo.canvas_width, (int)animInfo.canvas_height);
-    if (webp->canvas == NULL) {
+    canvas = WebpImageFromRGBA(rgba, (int)animInfo.canvas_width, (int)animInfo.canvas_height);
+    if (canvas == NULL) {
         return -1;
     }
     if (!haveFrameInfo && info != NULL) {
@@ -629,17 +595,11 @@ gdWebpReadNextImage(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *image
     webp->imageTimestamp = timestamp;
     webp->imageIndex++;
     if (image != NULL) {
-        *image = webp->canvas;
+        *image = canvas;
+    } else {
+        gdImageDestroy(canvas);
     }
     return 1;
-}
-
-BGD_DECLARE(gdImagePtr) gdWebpReadCloneImage(gdWebpReadPtr webp)
-{
-    if (webp == NULL || webp->canvas == NULL) {
-        return NULL;
-    }
-    return WebpCloneImage(webp->canvas);
 }
 
 /* returns 0 on success, 1 on failure */
@@ -1260,13 +1220,6 @@ gdWebpReadNextImage(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *image
     ARG_NOT_USED(image);
     _noWebpError();
     return -1;
-}
-
-BGD_DECLARE(gdImagePtr) gdWebpReadCloneImage(gdWebpReadPtr webp)
-{
-    ARG_NOT_USED(webp);
-    _noWebpError();
-    return NULL;
 }
 
 BGD_DECLARE(gdWebpWritePtr)
