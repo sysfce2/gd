@@ -95,6 +95,23 @@ static int gdPngSetTextProfile(gdImageMetadata *metadata, const unsigned char *d
     return status;
 }
 
+static int gdPngInfoValidBitDepth(int color_type, int bit_depth)
+{
+    switch (color_type) {
+    case PNG_COLOR_TYPE_GRAY:
+        return bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8 ||
+               bit_depth == 16;
+    case PNG_COLOR_TYPE_RGB:
+    case PNG_COLOR_TYPE_GRAY_ALPHA:
+    case PNG_COLOR_TYPE_RGB_ALPHA:
+        return bit_depth == 8 || bit_depth == 16;
+    case PNG_COLOR_TYPE_PALETTE:
+        return bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8;
+    default:
+        return FALSE;
+    }
+}
+
 static int gdPngReadMetadataFromMemory(const unsigned char *png, size_t png_size,
                                        gdImageMetadata *metadata)
 {
@@ -903,6 +920,169 @@ BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options)
     options->compression_strategy = GD_PNG_COMPRESSION_STRATEGY_DEFAULT;
 }
 
+BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info)
+{
+    gdImageMetadata *metadata;
+
+    if (info == NULL)
+        return;
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->struct_size = sizeof(*info);
+    info->palette_entries = -1;
+    info->x_pixels_per_unit = -1;
+    info->y_pixels_per_unit = -1;
+    info->physical_unit = -1;
+    info->metadata = metadata;
+}
+
+BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info)
+{
+    const unsigned char *png = (const unsigned char *)data;
+    size_t png_size;
+    size_t pos;
+    gdImageMetadata *metadata;
+    int seen_ihdr = FALSE;
+    int seen_iend = FALSE;
+
+    if (info == NULL || info->struct_size < sizeof(*info) || data == NULL || size < 0) {
+        return 1;
+    }
+
+    metadata = info->metadata;
+    gdPngInfoInit(info);
+    info->metadata = metadata;
+
+    png_size = (size_t)size;
+    if (png_size < 8 || memcmp(png, gdPngSignature, 8) != 0) {
+        return 1;
+    }
+
+    pos = 8;
+    while (pos + 12 <= png_size) {
+        unsigned int chunk_size = gdPngGetUint32(png + pos);
+        const unsigned char *type = png + pos + 4;
+        const unsigned char *chunk_data = png + pos + 8;
+        size_t chunk_total;
+
+        if ((size_t)chunk_size > png_size - pos - 12) {
+            return 1;
+        }
+        chunk_total = (size_t)chunk_size + 12;
+
+        if (!seen_ihdr) {
+            png_uint_32 width, height;
+
+            if (!gdPngChunkIs(type, "IHDR") || chunk_size != 13) {
+                return 1;
+            }
+            width = gdPngGetUint32(chunk_data);
+            height = gdPngGetUint32(chunk_data + 4);
+            if (width == 0 || height == 0 || width > INT_MAX || height > INT_MAX) {
+                return 1;
+            }
+            info->width = (int)width;
+            info->height = (int)height;
+            info->bit_depth = chunk_data[8];
+            info->color_type = chunk_data[9];
+            info->interlace_method = chunk_data[12];
+            if (!gdPngInfoValidBitDepth(info->color_type, info->bit_depth) ||
+                chunk_data[10] != PNG_COMPRESSION_TYPE_BASE ||
+                chunk_data[11] != PNG_FILTER_TYPE_BASE) {
+                return 1;
+            }
+            switch (info->color_type) {
+            case PNG_COLOR_TYPE_RGB:
+            case PNG_COLOR_TYPE_RGB_ALPHA:
+            case PNG_COLOR_TYPE_GRAY_ALPHA:
+                info->decoded_truecolor = TRUE;
+                break;
+            case PNG_COLOR_TYPE_PALETTE:
+            case PNG_COLOR_TYPE_GRAY:
+                info->decoded_truecolor = FALSE;
+                break;
+            default:
+                return 1;
+            }
+            info->has_alpha = (info->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
+                               info->color_type == PNG_COLOR_TYPE_GRAY_ALPHA);
+            if (info->interlace_method != PNG_INTERLACE_NONE &&
+                info->interlace_method != PNG_INTERLACE_ADAM7) {
+                return 1;
+            }
+            seen_ihdr = TRUE;
+        } else if (gdPngChunkIs(type, "PLTE")) {
+            if (chunk_size % 3 != 0 || chunk_size / 3 > 256) {
+                return 1;
+            }
+            info->palette_entries = (int)(chunk_size / 3);
+        } else if (gdPngChunkIs(type, "tRNS")) {
+            info->has_transparency = TRUE;
+        } else if (gdPngChunkIs(type, "pHYs")) {
+            unsigned int x_pixels_per_unit;
+            unsigned int y_pixels_per_unit;
+
+            if (chunk_size != 9) {
+                return 1;
+            }
+            x_pixels_per_unit = gdPngGetUint32(chunk_data);
+            y_pixels_per_unit = gdPngGetUint32(chunk_data + 4);
+            if (x_pixels_per_unit > INT_MAX || y_pixels_per_unit > INT_MAX) {
+                return 1;
+            }
+            info->x_pixels_per_unit = (int)x_pixels_per_unit;
+            info->y_pixels_per_unit = (int)y_pixels_per_unit;
+            info->physical_unit = chunk_data[8];
+        } else if (gdPngChunkIs(type, "tEXt")) {
+            if (metadata != NULL && gdPngSetTextProfile(metadata, chunk_data, chunk_size) != GD_META_OK) {
+                return 1;
+            }
+        } else if (gdPngChunkIs(type, "IEND")) {
+            if (chunk_size != 0) {
+                return 1;
+            }
+            seen_iend = TRUE;
+            break;
+        }
+
+        pos += chunk_total;
+    }
+
+    return seen_ihdr && seen_iend ? 0 : 1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoCtx(gdIOCtx *infile, gdPngInfo *info)
+{
+    void *data;
+    int size;
+    int status;
+
+    data = gdPngReadCtxToMemory(infile, &size);
+    if (data == NULL) {
+        return 1;
+    }
+    status = gdPngGetInfoPtr(size, data, info);
+    gdFree(data);
+    return status;
+}
+
+BGD_DECLARE(int) gdPngGetInfo(FILE *inFile, gdPngInfo *info)
+{
+    gdIOCtx *in;
+    int status;
+
+    if (inFile == NULL) {
+        return 1;
+    }
+    in = gdNewFileCtx(inFile);
+    if (in == NULL) {
+        return 1;
+    }
+    status = gdPngGetInfoCtx(in, info);
+    in->gd_free(in);
+    return status;
+}
+
 static int gdPngWriteOptionsValid(const gdPngWriteOptions *options)
 {
     if (options->struct_size < sizeof(*options)) {
@@ -1656,6 +1836,47 @@ BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options)
     memset(options, 0, sizeof(*options));
     options->struct_size = sizeof(*options);
     options->compression_level = -1;
+}
+
+BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info)
+{
+    gdImageMetadata *metadata;
+
+    if (info == NULL)
+        return;
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->struct_size = sizeof(*info);
+    info->palette_entries = -1;
+    info->x_pixels_per_unit = -1;
+    info->y_pixels_per_unit = -1;
+    info->physical_unit = -1;
+    info->metadata = metadata;
+}
+
+BGD_DECLARE(int) gdPngGetInfo(FILE *inFile, gdPngInfo *info)
+{
+    ARG_NOT_USED(inFile);
+    ARG_NOT_USED(info);
+    _noPngError();
+    return 1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoCtx(gdIOCtx *infile, gdPngInfo *info)
+{
+    ARG_NOT_USED(infile);
+    ARG_NOT_USED(info);
+    _noPngError();
+    return 1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info)
+{
+    ARG_NOT_USED(size);
+    ARG_NOT_USED(data);
+    ARG_NOT_USED(info);
+    _noPngError();
+    return 1;
 }
 
 BGD_DECLARE(int)

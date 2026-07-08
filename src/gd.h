@@ -678,12 +678,33 @@ typedef struct {
     const gdImageMetadata *metadata;
 } gdPngWriteOptions;
 
+typedef struct {
+    size_t struct_size;
+    int width;
+    int height;
+    int bit_depth;
+    int color_type;
+    int has_alpha;
+    int has_transparency;
+    int palette_entries;
+    int interlace_method;
+    int x_pixels_per_unit;
+    int y_pixels_per_unit;
+    int physical_unit;
+    gdImageMetadata *metadata;
+    int decoded_truecolor;
+} gdPngInfo;
+
 BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options);
+BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info);
 BGD_DECLARE(int) gdImagePngWithOptions(gdImagePtr im, FILE *out, const gdPngWriteOptions *options);
 BGD_DECLARE(int)
 gdImagePngCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdPngWriteOptions *options);
 BGD_DECLARE(void *)
 gdImagePngPtrWithOptions(gdImagePtr im, int *size, const gdPngWriteOptions *options);
+BGD_DECLARE(int) gdPngGetInfo(FILE *in, gdPngInfo *info);
+BGD_DECLARE(int) gdPngGetInfoCtx(gdIOCtxPtr in, gdPngInfo *info);
+BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info);
 BGD_DECLARE(const char *) gdPngGetVersionString(void);
 
 /* QOI */
@@ -784,6 +805,11 @@ BGD_DECLARE(gdImagePtr) gdGifReadCloneImage(gdGifReadPtr gif);
  *   - <gdImageGifAnimAdd>
  */
 enum { gdDisposalUnknown, gdDisposalNone, gdDisposalRestoreBackground, gdDisposalRestorePrevious };
+
+#define GD_GIF_DISPOSAL_UNKNOWN gdDisposalUnknown
+#define GD_GIF_DISPOSAL_NONE gdDisposalNone
+#define GD_GIF_DISPOSAL_RESTORE_BACKGROUND gdDisposalRestoreBackground
+#define GD_GIF_DISPOSAL_RESTORE_PREVIOUS gdDisposalRestorePrevious
 
 BGD_DECLARE(void)
 gdImageGifAnimBegin(gdImagePtr im, FILE *outFile, int GlobalCM, int Loops);
@@ -927,6 +953,13 @@ typedef struct gdJxlAnimReader *gdJxlAnimReaderPtr;
 typedef struct gdJxlAnim *gdJxlAnimPtr;
 
 typedef struct {
+    int width;
+    int height;
+    int animated;
+    int loop_count;
+} gdJxlInfo;
+
+typedef struct {
     int delay_ms;
     int x_offset;
     int y_offset;
@@ -946,7 +979,10 @@ BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreate(FILE *inFile);
 BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreatePtr(int size, void *data);
 BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx);
 
+BGD_DECLARE(int) gdImageJxlAnimReaderGetInfo(gdJxlAnimReaderPtr reader, gdJxlInfo *info);
 BGD_DECLARE(gdImagePtr) gdJxlReadNextImage(gdJxlAnimReaderPtr reader, int *delay_ms);
+BGD_DECLARE(int)
+gdJxlReadNextImageEx(gdJxlAnimReaderPtr reader, int *delay_ms, gdImagePtr *image);
 
 BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreateRaw(FILE *inFile);
 BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreateRawPtr(int size, void *data);
@@ -958,13 +994,22 @@ BGD_DECLARE(void) gdImageJxlAnimReaderDestroy(gdJxlAnimReaderPtr reader);
 
 BGD_DECLARE(gdJxlAnimPtr)
 gdImageJxlAnimBegin(FILE *outFile, int width, int height, int lossless, float distance, int effort);
+BGD_DECLARE(gdJxlAnimPtr)
+gdImageJxlAnimBeginEx(FILE *outFile, int width, int height, int lossless, float distance,
+                      int effort, int loop_count);
 
 BGD_DECLARE(gdJxlAnimPtr)
 gdImageJxlAnimBeginCtx(gdIOCtxPtr outCtx, int width, int height, int lossless, float distance,
                        int effort);
+BGD_DECLARE(gdJxlAnimPtr)
+gdImageJxlAnimBeginCtxEx(gdIOCtxPtr outCtx, int width, int height, int lossless, float distance,
+                         int effort, int loop_count);
 
 BGD_DECLARE(gdJxlAnimPtr)
 gdImageJxlAnimBeginPtr(int width, int height, int lossless, float distance, int effort);
+BGD_DECLARE(gdJxlAnimPtr)
+gdImageJxlAnimBeginPtrEx(int width, int height, int lossless, float distance, int effort,
+                         int loop_count);
 
 BGD_DECLARE(int) gdImageJxlAnimAddFrame(gdJxlAnimPtr anim, gdImagePtr im, int delay_ms);
 
@@ -1350,8 +1395,7 @@ gdImageBmpCtxEx(gdImagePtr im, gdIOCtxPtr out, int bpp, int compression, int fla
 BGD_DECLARE(void) gdImageWBMP(gdImagePtr image, int fg, FILE *out);
 BGD_DECLARE(void) gdImageWBMPCtx(gdImagePtr image, int fg, gdIOCtxPtr out);
 
-BGD_DECLARE(int) gdImageFile(gdImagePtr im, const char *filename);
-BGD_DECLARE(int) gdSupportsFileType(const char *filename, int writing);
+
 
 BGD_DECLARE(int) gdUhdrIsAvailable(void);
 BGD_DECLARE(int) gdUhdrImageWidth(gdUhdrImagePtr im);
@@ -1374,6 +1418,9 @@ BGD_DECLARE(void *)
 gdUhdrImageWritePtr(gdUhdrImagePtr im, int *size, int format, int quality, gdUhdrErrorPtr err);
 BGD_DECLARE(gdImagePtr)
 gdUhdrImageGetSdr(gdUhdrImagePtr im, gdUhdrErrorPtr err);
+
+BGD_DECLARE(int) gdImageFile(gdImagePtr im, const char *filename);
+BGD_DECLARE(int) gdSupportsFileType(const char *filename, int writing);
 
 /* Guaranteed to correctly free memory returned by the gdImage*Ptr
    functions */

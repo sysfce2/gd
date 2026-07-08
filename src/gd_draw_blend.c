@@ -42,8 +42,6 @@ static inline uint32_t fetch_pixel_general(gdSurfacePtr surface, int x, int y, i
     return src[y * surface->stride / 4 + x];
 }
 
-#define SIZEOF_LONG 8
-
 static inline uint32_t bilinear_interpolation(uint32_t tl, uint32_t tr, uint32_t bl, uint32_t br,
                                               int distx, int disty)
 {
