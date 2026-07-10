@@ -75,8 +75,10 @@ typedef gdCompositeOperator gdImageOp;
 
 BGD_DECLARE(gdContextPtr) gdContextCreateForImage(gdImagePtr image);
 BGD_DECLARE(void) gdContextFlushImage(gdContextPtr context);
+BGD_DECLARE(int) gdContextReloadImage(gdContextPtr context);
 BGD_DECLARE(gdImagePtr) gdContextGetImage(gdContextPtr context);
 BGD_DECLARE(void) gdContextDestroy(gdContextPtr context);
+BGD_DECLARE(void) gdContextDestroyNoFlush(gdContextPtr context);
 BGD_DECLARE(int) gdContextSave(gdContextPtr context);
 BGD_DECLARE(int) gdContextRestore(gdContextPtr context);
 BGD_DECLARE(int) gdContextClip(gdContextPtr context);

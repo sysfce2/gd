@@ -224,10 +224,18 @@ GD_FT_Outline *gd_ft_outline_create(int points, int contours)
     GD_FT_Outline *ft = gdMalloc(sizeof(GD_FT_Outline));
     if (!ft)
         return NULL;
-    ft->points = malloc((size_t)(points + contours) * sizeof(GD_FT_Vector));
-    ft->tags = malloc((size_t)(points + contours) * sizeof(char));
-    ft->contours = malloc((size_t)contours * sizeof(short));
-    ft->contours_flag = malloc((size_t)contours * sizeof(char));
+    ft->points = gdMalloc((size_t)(points + contours) * sizeof(GD_FT_Vector));
+    ft->tags = gdMalloc((size_t)(points + contours) * sizeof(char));
+    ft->contours = gdMalloc((size_t)contours * sizeof(short));
+    ft->contours_flag = gdMalloc((size_t)contours * sizeof(char));
+    if (!ft->points || !ft->tags || !ft->contours || !ft->contours_flag) {
+        gdFree(ft->points);
+        gdFree(ft->tags);
+        gdFree(ft->contours);
+        gdFree(ft->contours_flag);
+        gdFree(ft);
+        return NULL;
+    }
     ft->n_points = ft->n_contours = 0;
     ft->flags = 0x0;
     return ft;

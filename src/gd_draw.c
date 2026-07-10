@@ -30,6 +30,28 @@ static inline int premul_to_gdcolor(uint32_t pm)
     return gdCompositePixelToGd(gdCompositePixelFromArgb32(pm));
 }
 
+static int gdContextLoadImage(gdContextPtr ctx, gdImagePtr im)
+{
+    gdSurfacePtr scratch;
+
+    if (!ctx || !im || !im->trueColor) {
+        return 0;
+    }
+    scratch = ctx->surface;
+    if (!scratch || scratch->type != GD_SURFACE_ARGB32 || scratch->width != im->sx ||
+        scratch->height != im->sy) {
+        return 0;
+    }
+
+    for (int y = 0; y < im->sy; y++) {
+        uint32_t *dst = (uint32_t *)(scratch->data + y * scratch->stride);
+        for (int x = 0; x < im->sx; x++) {
+            dst[x] = gdcolor_to_premul(im->tpixels[y][x]);
+        }
+    }
+    return 1;
+}
+
 BGD_DECLARE(void)
 gdContextSetSourceRgba(gdContextPtr context, double r, double g, double b, double a)
 {
@@ -141,23 +163,19 @@ failState:
 BGD_DECLARE(gdContextPtr)
 gdContextCreateForImage(gdImagePtr im)
 {
+    gdContextPtr ctx;
+    gdSurfacePtr scratch;
+
     if (!im || !im->trueColor) {
         return NULL;
     }
 
-    gdSurfacePtr scratch = gdSurfaceCreate(im->sx, im->sy, GD_SURFACE_ARGB32);
+    scratch = gdSurfaceCreate(im->sx, im->sy, GD_SURFACE_ARGB32);
     if (!scratch) {
         return NULL;
     }
 
-    for (int y = 0; y < im->sy; y++) {
-        uint32_t *dst = (uint32_t *)(scratch->data + y * scratch->stride);
-        for (int x = 0; x < im->sx; x++) {
-            dst[x] = gdcolor_to_premul(im->tpixels[y][x]);
-        }
-    }
-
-    gdContextPtr ctx = gdContextCreate(scratch);
+    ctx = gdContextCreate(scratch);
     if (!ctx) {
         gdSurfaceDestroy(scratch);
         return NULL;
@@ -166,17 +184,26 @@ gdContextCreateForImage(gdImagePtr im)
 
     ctx->image = im;
     ctx->imageOwned = 0;
+    if (!gdContextLoadImage(ctx, im)) {
+        gdContextDestroyNoFlush(ctx);
+        return NULL;
+    }
     return ctx;
 }
 
 BGD_DECLARE(void)
 gdContextFlushImage(gdContextPtr ctx)
 {
-    if (!ctx || !ctx->image) {
+    if (!ctx || !ctx->image || !ctx->image->trueColor) {
         return;
     }
     gdImagePtr im = ctx->image;
     gdSurfacePtr scratch = ctx->surface;
+
+    if (!scratch || scratch->type != GD_SURFACE_ARGB32 || scratch->width != im->sx ||
+        scratch->height != im->sy) {
+        return;
+    }
 
     for (int y = 0; y < im->sy; y++) {
         uint32_t *src = (uint32_t *)(scratch->data + y * scratch->stride);
@@ -184,6 +211,15 @@ gdContextFlushImage(gdContextPtr ctx)
             im->tpixels[y][x] = premul_to_gdcolor(src[x]);
         }
     }
+}
+
+BGD_DECLARE(int)
+gdContextReloadImage(gdContextPtr ctx)
+{
+    if (!ctx || !ctx->image) {
+        return 0;
+    }
+    return gdContextLoadImage(ctx, ctx->image);
 }
 
 BGD_DECLARE(gdImagePtr)
@@ -335,14 +371,13 @@ gdContextRestore(gdContextPtr context)
     return 1;
 }
 
-BGD_DECLARE(void)
-gdContextDestroy(gdContextPtr context)
+static void gdContextDestroyEx(gdContextPtr context, int flush)
 {
     if (context == NULL)
         return;
     context->ref--;
     if (context->ref == 0) {
-        if (context->image) {
+        if (flush && context->image) {
             gdContextFlushImage(context);
         }
         gdSurfaceDestroy(context->surface);
@@ -357,6 +392,18 @@ gdContextDestroy(gdContextPtr context)
         gdSpanRleDestroy(context->rle);
         gdFree(context);
     }
+}
+
+BGD_DECLARE(void)
+gdContextDestroy(gdContextPtr context)
+{
+    gdContextDestroyEx(context, 1);
+}
+
+BGD_DECLARE(void)
+gdContextDestroyNoFlush(gdContextPtr context)
+{
+    gdContextDestroyEx(context, 0);
 }
 
 BGD_DECLARE(void)
