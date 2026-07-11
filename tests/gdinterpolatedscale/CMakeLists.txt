@@ -1,4 +1,5 @@
 LIST(APPEND TESTS_FILES
+	alpha_weight
 	gdBicubicFixed
 	gdModesAndPalettes
 	gdTrivialResize

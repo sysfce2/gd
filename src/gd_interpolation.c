@@ -665,6 +665,50 @@ static inline int gdClampInt(const int value, const int min, const int max)
     return value < min ? min : (value > max ? max : value);
 }
 
+typedef struct {
+    double red;
+    double green;
+    double blue;
+    double opacity;
+} gdAlphaWeightedColor;
+
+static inline double gdAlphaToOpacity(const int alpha)
+{
+    return (double)(gdAlphaMax - alpha) / (double)gdAlphaMax;
+}
+
+static inline void gdAlphaWeightedColorAdd(gdAlphaWeightedColor *acc, const int color,
+                                           const double weight)
+{
+    const double opacity = gdAlphaToOpacity(gdTrueColorGetAlpha(color));
+    const double weighted_opacity = weight * opacity;
+
+    acc->red += (double)gdTrueColorGetRed(color) * weighted_opacity;
+    acc->green += (double)gdTrueColorGetGreen(color) * weighted_opacity;
+    acc->blue += (double)gdTrueColorGetBlue(color) * weighted_opacity;
+    acc->opacity += weighted_opacity;
+}
+
+static inline int gdAlphaWeightedColorResolve(const gdAlphaWeightedColor *acc,
+                                              const double rgb_scale)
+{
+    double opacity = acc->opacity;
+    unsigned char red, green, blue, alpha;
+
+    if (opacity <= 0.0) {
+        return gdTrueColorAlpha(0, 0, 0, gdAlphaTransparent);
+    }
+
+    red = uchar_clamp((acc->red / opacity) * rgb_scale, 0xFF);
+    green = uchar_clamp((acc->green / opacity) * rgb_scale, 0xFF);
+    blue = uchar_clamp((acc->blue / opacity) * rgb_scale, 0xFF);
+
+    opacity = CLAMP(opacity, 0.0, 1.0);
+    alpha = uchar_clamp((double)gdAlphaMax - opacity * (double)gdAlphaMax, 0x7F);
+
+    return gdTrueColorAlpha(red, green, blue, alpha);
+}
+
 static inline interpolation_method gdImageGetEffectiveInterpolation(const gdImagePtr im)
 {
     switch (im->interpolation_id) {
@@ -709,28 +753,19 @@ static int getPixelInterpolateWeightClipped(gdImagePtr im, const double x, const
     const int c4 = im->trueColor == 1
                        ? getPixelOverflowTCClipped(im, sx - 1, sy - 1, bgColor, clip)
                        : getPixelOverflowPaletteClipped(im, sx, sy - 1, bgColor, clip);
-    int r, g, b, a;
+    gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
 
     if (x < 0)
         sx--;
     if (y < 0)
         sy--;
 
-    /* component-wise summing-up of color values */
-    r = (int)(m1 * gdTrueColorGetRed(c1) + m2 * gdTrueColorGetRed(c2) + m3 * gdTrueColorGetRed(c3) +
-              m4 * gdTrueColorGetRed(c4));
-    g = (int)(m1 * gdTrueColorGetGreen(c1) + m2 * gdTrueColorGetGreen(c2) +
-              m3 * gdTrueColorGetGreen(c3) + m4 * gdTrueColorGetGreen(c4));
-    b = (int)(m1 * gdTrueColorGetBlue(c1) + m2 * gdTrueColorGetBlue(c2) +
-              m3 * gdTrueColorGetBlue(c3) + m4 * gdTrueColorGetBlue(c4));
-    a = (int)(m1 * gdTrueColorGetAlpha(c1) + m2 * gdTrueColorGetAlpha(c2) +
-              m3 * gdTrueColorGetAlpha(c3) + m4 * gdTrueColorGetAlpha(c4));
+    gdAlphaWeightedColorAdd(&acc, c1, m1);
+    gdAlphaWeightedColorAdd(&acc, c2, m2);
+    gdAlphaWeightedColorAdd(&acc, c3, m3);
+    gdAlphaWeightedColorAdd(&acc, c4, m4);
 
-    r = CLAMP(r, 0, 255);
-    g = CLAMP(g, 0, 255);
-    b = CLAMP(b, 0, 255);
-    a = CLAMP(a, 0, gdAlphaMax);
-    return gdTrueColorAlpha(r, g, b, a);
+    return gdAlphaWeightedColorResolve(&acc, 1.0);
 }
 
 /**
@@ -759,7 +794,7 @@ static int getPixelInterpolatedClipped(gdImagePtr im, const double x, const doub
     int i;
     double kernel, kernel_cache_y;
     double kernel_x[12], kernel_y[4];
-    double new_r = 0.0f, new_g = 0.0f, new_b = 0.0f, new_a = 0.0f;
+    gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
     const interpolation_method interpolation = gdImageGetEffectiveInterpolation(im);
 
     /* These methods use special implementations */
@@ -796,31 +831,19 @@ static int getPixelInterpolatedClipped(gdImagePtr im, const double x, const doub
                 const int rgbs = getPixelOverflowTCClipped(im, xii, yii, bgColor, clip);
 
                 kernel = kernel_cache_y * kernel_x[xii - (xi - 1)];
-                new_r += kernel * gdTrueColorGetRed(rgbs);
-                new_g += kernel * gdTrueColorGetGreen(rgbs);
-                new_b += kernel * gdTrueColorGetBlue(rgbs);
-                new_a += kernel * gdTrueColorGetAlpha(rgbs);
+                gdAlphaWeightedColorAdd(&acc, rgbs, kernel);
             }
         } else {
             for (xii = xi - 1; xii < xi + 3; xii++) {
                 const int rgbs = getPixelOverflowPaletteClipped(im, xii, yii, bgColor, clip);
 
                 kernel = kernel_cache_y * kernel_x[xii - (xi - 1)];
-                new_r += kernel * gdTrueColorGetRed(rgbs);
-                new_g += kernel * gdTrueColorGetGreen(rgbs);
-                new_b += kernel * gdTrueColorGetBlue(rgbs);
-                new_a += kernel * gdTrueColorGetAlpha(rgbs);
+                gdAlphaWeightedColorAdd(&acc, rgbs, kernel);
             }
         }
     }
 
-    new_r = CLAMP(new_r, 0, 255);
-    new_g = CLAMP(new_g, 0, 255);
-    new_b = CLAMP(new_b, 0, 255);
-    new_a = CLAMP(new_a, 0, gdAlphaMax);
-
-    return gdTrueColorAlpha((int)(new_r + 0.5), (int)(new_g + 0.5), (int)(new_b + 0.5),
-                            (int)(new_a + 0.5));
+    return gdAlphaWeightedColorResolve(&acc, 1.0);
 }
 
 static int getPixelInterpolated(gdImagePtr im, const double x, const double y, const int bgColor)
@@ -950,30 +973,21 @@ static inline void _gdScaleOneAxis(gdImagePtr pSrc, gdImagePtr dst, unsigned int
     unsigned int ndx;
 
     for (ndx = 0; ndx < dst_len; ndx++) {
-        double r = 0, g = 0, b = 0, a = 0;
+        gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
         const int left = contrib->ContribRow[ndx].Left;
         const int right = contrib->ContribRow[ndx].Right;
         int *dest = (axis == HORIZONTAL) ? &dst->tpixels[row][ndx] : &dst->tpixels[ndx][row];
 
         int i;
 
-        /* Accumulate each channel */
         for (i = left; i <= right; i++) {
             const int left_channel = i - left;
             const int srcpx = (axis == HORIZONTAL) ? pSrc->tpixels[row][i] : pSrc->tpixels[i][row];
 
-            r +=
-                contrib->ContribRow[ndx].Weights[left_channel] * (double)(gdTrueColorGetRed(srcpx));
-            g += contrib->ContribRow[ndx].Weights[left_channel] *
-                 (double)(gdTrueColorGetGreen(srcpx));
-            b += contrib->ContribRow[ndx].Weights[left_channel] *
-                 (double)(gdTrueColorGetBlue(srcpx));
-            a += contrib->ContribRow[ndx].Weights[left_channel] *
-                 (double)(gdTrueColorGetAlpha(srcpx));
+            gdAlphaWeightedColorAdd(&acc, srcpx, contrib->ContribRow[ndx].Weights[left_channel]);
         } /* for */
 
-        *dest = gdTrueColorAlpha(uchar_clamp(r, 0xFF), uchar_clamp(g, 0xFF), uchar_clamp(b, 0xFF),
-                                 uchar_clamp(a, 0x7F)); /* alpha is 0..127 */
+        *dest = gdAlphaWeightedColorResolve(&acc, 1.0);
     } /* for */
 } /* _gdScaleOneAxis*/
 
@@ -1219,25 +1233,15 @@ static gdImagePtr gdImageScaleBilinearPalette(gdImagePtr im, const unsigned int 
             pixel4 = getPixelOverflowPalette(im, n + 1, m + 1, pixel1);
 
             {
-                const unsigned char red = uchar_clamp(
-                    f_w1 * gdTrueColorGetRed(pixel1) + f_w2 * gdTrueColorGetRed(pixel2) +
-                        f_w3 * gdTrueColorGetRed(pixel3) + f_w4 * gdTrueColorGetRed(pixel4),
-                    0xFF);
-                const unsigned char green = uchar_clamp(
-                    f_w1 * gdTrueColorGetGreen(pixel1) + f_w2 * gdTrueColorGetGreen(pixel2) +
-                        f_w3 * gdTrueColorGetGreen(pixel3) + f_w4 * gdTrueColorGetGreen(pixel4),
-                    0xFF);
-                const unsigned char blue = uchar_clamp(
-                    f_w1 * gdTrueColorGetBlue(pixel1) + f_w2 * gdTrueColorGetBlue(pixel2) +
-                        f_w3 * gdTrueColorGetBlue(pixel3) + f_w4 * gdTrueColorGetBlue(pixel4),
-                    0xFF);
-                const unsigned char alpha = uchar_clamp(
-                    f_w1 * gdTrueColorGetAlpha(pixel1) + f_w2 * gdTrueColorGetAlpha(pixel2) +
-                        f_w3 * gdTrueColorGetAlpha(pixel3) + f_w4 * gdTrueColorGetAlpha(pixel4),
-                    0x7F);
+                gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
+
+                gdAlphaWeightedColorAdd(&acc, pixel1, f_w1);
+                gdAlphaWeightedColorAdd(&acc, pixel2, f_w2);
+                gdAlphaWeightedColorAdd(&acc, pixel3, f_w3);
+                gdAlphaWeightedColorAdd(&acc, pixel4, f_w4);
 
                 new_img->tpixels[dst_offset_v][dst_offset_h] =
-                    gdTrueColorAlpha(red, green, blue, alpha);
+                    gdAlphaWeightedColorResolve(&acc, 1.0);
             }
 
             dst_offset_h++;
@@ -1293,25 +1297,15 @@ static gdImagePtr gdImageScaleBilinearTC(gdImagePtr im, const unsigned int new_w
             pixel4 = getPixelOverflowTC(im, n + 1, m + 1, pixel1);
 
             {
-                const unsigned char red = uchar_clamp(
-                    f_w1 * gdTrueColorGetRed(pixel1) + f_w2 * gdTrueColorGetRed(pixel2) +
-                        f_w3 * gdTrueColorGetRed(pixel3) + f_w4 * gdTrueColorGetRed(pixel4),
-                    0xFF);
-                const unsigned char green = uchar_clamp(
-                    f_w1 * gdTrueColorGetGreen(pixel1) + f_w2 * gdTrueColorGetGreen(pixel2) +
-                        f_w3 * gdTrueColorGetGreen(pixel3) + f_w4 * gdTrueColorGetGreen(pixel4),
-                    0xFF);
-                const unsigned char blue = uchar_clamp(
-                    f_w1 * gdTrueColorGetBlue(pixel1) + f_w2 * gdTrueColorGetBlue(pixel2) +
-                        f_w3 * gdTrueColorGetBlue(pixel3) + f_w4 * gdTrueColorGetBlue(pixel4),
-                    0xFF);
-                const unsigned char alpha = uchar_clamp(
-                    f_w1 * gdTrueColorGetAlpha(pixel1) + f_w2 * gdTrueColorGetAlpha(pixel2) +
-                        f_w3 * gdTrueColorGetAlpha(pixel3) + f_w4 * gdTrueColorGetAlpha(pixel4),
-                    0x7F);
+                gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
+
+                gdAlphaWeightedColorAdd(&acc, pixel1, f_w1);
+                gdAlphaWeightedColorAdd(&acc, pixel2, f_w2);
+                gdAlphaWeightedColorAdd(&acc, pixel3, f_w3);
+                gdAlphaWeightedColorAdd(&acc, pixel4, f_w4);
 
                 new_img->tpixels[dst_offset_v][dst_offset_h] =
-                    gdTrueColorAlpha(red, green, blue, alpha);
+                    gdAlphaWeightedColorResolve(&acc, 1.0);
             }
 
             dst_offset_h++;
@@ -1374,8 +1368,7 @@ static gdImagePtr gdImageScaleBicubicFixed(gdImagePtr src, const unsigned int wi
             const long n = gdClampInt((int)src_x, 0, src_w - 1);
             const double f_g = src_x - (double)n;
             long k;
-            double red_acc = 0.0, green_acc = 0.0, blue_acc = 0.0, alpha_acc = 0.0;
-            unsigned char red, green, blue, alpha = 0;
+            gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
             int *dst_row = dst->tpixels[dst_offset_y];
 
             for (k = -1; k < 3; k++) {
@@ -1388,19 +1381,11 @@ static gdImagePtr gdImageScaleBicubicFixed(gdImagePtr src, const unsigned int wi
                     const double weight = weight_y * filter_cubic_spline((double)l - f_g, 0.0);
                     const int c = src->tpixels[src_y_sample][src_x_sample];
 
-                    red_acc += weight * (double)gdTrueColorGetRed(c);
-                    green_acc += weight * (double)gdTrueColorGetGreen(c);
-                    blue_acc += weight * (double)gdTrueColorGetBlue(c);
-                    alpha_acc += weight * (double)gdTrueColorGetAlpha(c);
+                    gdAlphaWeightedColorAdd(&acc, c, weight);
                 }
             }
 
-            red = uchar_clamp(red_acc * gamma, 0xFF);
-            green = uchar_clamp(green_acc * gamma, 0xFF);
-            blue = uchar_clamp(blue_acc * gamma, 0xFF);
-            alpha = uchar_clamp(alpha_acc * gamma, 0x7F);
-
-            *(dst_row + dst_offset_x) = gdTrueColorAlpha(red, green, blue, alpha);
+            *(dst_row + dst_offset_x) = gdAlphaWeightedColorResolve(&acc, gamma);
 
             dst_offset_x++;
         }

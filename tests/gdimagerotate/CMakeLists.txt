@@ -8,6 +8,7 @@ LIST(APPEND TESTS_FILES
 ENDIF(PNG_FOUND)
 
 LIST(APPEND TESTS_FILES
+	alpha_weight
 	uniform_transparent
 )
 

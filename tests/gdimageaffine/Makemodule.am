@@ -1,4 +1,5 @@
 libgd_test_programs += \
+	gdimageaffine/alpha_weight \
 	gdimageaffine/edge \
 	gdimageaffine/fractional \
 	gdimageaffine/matrix \
