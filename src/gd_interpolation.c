@@ -1221,8 +1221,9 @@ static const FilterInfo *_get_filterinfo_for_id(gdInterpolationMethod id)
     return &filters[id];
 }
 
-static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int new_width,
-                                      const unsigned int new_height)
+static gdImagePtr gdImageScaleTwoPassWithMethod(const gdImagePtr src, const unsigned int new_width,
+                                                const unsigned int new_height,
+                                                gdInterpolationMethod method)
 {
     const unsigned int src_width = src->sx;
     const unsigned int src_height = src->sy;
@@ -1230,7 +1231,7 @@ static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int n
     gdLinearPixel *dst_buf = NULL;
     gdImagePtr dst = NULL;
     int scale_pass_res;
-    const FilterInfo *filter = _get_filterinfo_for_id(src->interpolation_id);
+    const FilterInfo *filter = _get_filterinfo_for_id(method);
 
     /* First, handle the trivial case. */
     if (src_width == new_width && src_height == new_height) {
@@ -1296,6 +1297,12 @@ static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int n
     }
     return dst;
 } /* gdImageScaleTwoPass*/
+
+static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int new_width,
+                                      const unsigned int new_height)
+{
+    return gdImageScaleTwoPassWithMethod(src, new_width, new_height, src->interpolation_id);
+}
 
 /*
         Bilinear, bicubic and nearest implementations are
@@ -1566,6 +1573,27 @@ static gdImagePtr gdImageScaleBicubicFixed(gdImagePtr src, const unsigned int wi
     return dst;
 }
 
+static inline int gdImageScaleIsDownscaleOrMixed(const gdImagePtr src,
+                                                 const unsigned int new_width,
+                                                 const unsigned int new_height)
+{
+    return new_width < (unsigned int)gdImageSX(src) || new_height < (unsigned int)gdImageSY(src);
+}
+
+static inline int gdInterpolationIsFixedFamily(const gdInterpolationMethod method)
+{
+    switch (method) {
+    case GD_DEFAULT:
+    case GD_BILINEAR_FIXED:
+    case GD_LINEAR:
+    case GD_BICUBIC_FIXED:
+    case GD_BICUBIC:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /**
  * Function: gdImageScale
  *
@@ -1592,6 +1620,7 @@ BGD_DECLARE(gdImagePtr)
 gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned int new_height)
 {
     gdImagePtr im_scaled = NULL;
+    int downscale_or_mixed;
 
     if (src == NULL || (uintmax_t)src->interpolation_id >= GD_METHOD_COUNT) {
         return NULL;
@@ -1603,6 +1632,12 @@ gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned 
     if ((int)new_width == gdImageSX(src) && (int)new_height == gdImageSY(src)) {
         return gdImageClone(src);
     }
+
+    downscale_or_mixed = gdImageScaleIsDownscaleOrMixed(src, new_width, new_height);
+    if (downscale_or_mixed && gdInterpolationIsFixedFamily(src->interpolation_id)) {
+        return gdImageScaleTwoPassWithMethod(src, new_width, new_height, GD_TRIANGLE);
+    }
+
     switch (src->interpolation_id) {
     /*Special cases, optimized implementations */
     case GD_NEAREST_NEIGHBOUR:
@@ -1616,6 +1651,7 @@ gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned 
 
     case GD_BICUBIC_FIXED:
     case GD_BICUBIC:
+    case GD_DEFAULT:
         im_scaled = gdImageScaleBicubicFixed(src, new_width, new_height);
         break;
 

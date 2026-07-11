@@ -4,6 +4,7 @@ LIST(APPEND TESTS_FILES
 	gdModesAndPalettes
 	gdTrivialResize
 	linear_light
+	scale_flow
 )
 
 ADD_GD_TESTS()
