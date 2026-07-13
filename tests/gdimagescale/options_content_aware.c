@@ -234,14 +234,36 @@ static gdImagePtr make_palette_entropy_source(void)
 	return im;
 }
 
+static gdImagePtr make_indexed_entropy_source(void)
+{
+	gdImagePtr im;
+	int blue, red, black, white;
+	int x, y;
+
+	im = gdImageCreate(32, 16);
+	gdTestAssert(im != NULL);
+	blue = gdImageColorAllocate(im, 20, 74, 122);
+	red = gdImageColorAllocate(im, 230, 40, 40);
+	black = gdImageColorAllocate(im, 0, 0, 0);
+	white = gdImageColorAllocate(im, 255, 255, 255);
+	gdImageFilledRectangle(im, 0, 0, 31, 15, blue);
+	gdImageFilledRectangle(im, 3, 3, 12, 12, red);
+	for (y = 0; y < 16; y++) {
+		for (x = 22; x < 32; x++) {
+			gdImageSetPixel(im, x, y, ((x + y) & 1) ? black : white);
+		}
+	}
+
+	return im;
+}
+
 static void test_entropy_palette_and_truecolor_equivalent(void)
 {
 	gdImagePtr truecolor, palette, from_truecolor, from_palette;
 	gdScaleOptions options = content_options();
 
 	truecolor = make_palette_entropy_source();
-	palette = make_palette_entropy_source();
-	gdTestAssert(gdImageTrueColorToPalette(palette, 0, 4));
+	palette = make_indexed_entropy_source();
 	gdTestAssert(gdImageTrueColor(truecolor));
 	gdTestAssert(!gdImageTrueColor(palette));
 
