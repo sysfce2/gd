@@ -1945,8 +1945,8 @@ static gdImagePtr gdImageScaleWithMethod(gdImagePtr src, int width, int height, 
 {
     if (method == GD_SCALE_INTERPOLATION_AUTO) {
         method = gdImageScaleIsDownscaleOrMixed(src, (unsigned int)width, (unsigned int)height)
-            ? GD_CATMULLROM
-            : GD_BICUBIC_FIXED;
+            ? GD_LANCZOS3
+            : GD_CATMULLROM;
     }
 
     if (!gdImageSetInterpolationMethod(src, (gdInterpolationMethod)method)) {

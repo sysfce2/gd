@@ -371,41 +371,41 @@ static void test_alpha_fit_modes_and_source_state(void)
 
 static void test_default_interpolation(void)
 {
-	gdImagePtr down_src, down_auto, down_catmull, down_bicubic;
-	gdImagePtr up_src, up_auto, up_bicubic, up_catmull, up_default;
+	gdImagePtr down_src, down_auto, down_lanczos, down_catmull;
+	gdImagePtr up_src, up_auto, up_catmull, up_bicubic, up_default;
 	gdScaleOptions options = scale_options();
 
 	options.fit = GD_SCALE_FIT_FILL;
 
 	down_src = make_default_interpolation_source(80, 50);
 	down_auto = gdImageScaleWithOptions(down_src, 20, 10, &options);
+	options.interpolation = GD_LANCZOS3;
+	down_lanczos = gdImageScaleWithOptions(down_src, 20, 10, &options);
 	options.interpolation = GD_CATMULLROM;
 	down_catmull = gdImageScaleWithOptions(down_src, 20, 10, &options);
-	options.interpolation = GD_BICUBIC_FIXED;
-	down_bicubic = gdImageScaleWithOptions(down_src, 20, 10, &options);
-	gdTestAssert(images_equal(down_auto, down_catmull));
-	gdTestAssert(!images_equal(down_auto, down_bicubic));
-	gdImageDestroy(down_bicubic);
+	gdTestAssert(images_equal(down_auto, down_lanczos));
+	gdTestAssert(!images_equal(down_auto, down_catmull));
 	gdImageDestroy(down_catmull);
+	gdImageDestroy(down_lanczos);
 	gdImageDestroy(down_auto);
 	gdImageDestroy(down_src);
 
 	up_src = make_default_interpolation_source(10, 8);
 	options.interpolation = GD_SCALE_INTERPOLATION_AUTO;
 	up_auto = gdImageScaleWithOptions(up_src, 40, 32, &options);
-	options.interpolation = GD_BICUBIC_FIXED;
-	up_bicubic = gdImageScaleWithOptions(up_src, 40, 32, &options);
 	options.interpolation = GD_CATMULLROM;
 	up_catmull = gdImageScaleWithOptions(up_src, 40, 32, &options);
+	options.interpolation = GD_BICUBIC_FIXED;
+	up_bicubic = gdImageScaleWithOptions(up_src, 40, 32, &options);
 	options.interpolation = GD_DEFAULT;
 	up_default = gdImageScaleWithOptions(up_src, 40, 32, &options);
-	gdTestAssert(images_equal(up_auto, up_bicubic));
-	gdTestAssert(!images_equal(up_auto, up_catmull));
+	gdTestAssert(images_equal(up_auto, up_catmull));
+	gdTestAssert(!images_equal(up_auto, up_bicubic));
 	gdTestAssert(!images_equal(up_auto, up_default));
 
 	gdImageDestroy(up_default);
-	gdImageDestroy(up_catmull);
 	gdImageDestroy(up_bicubic);
+	gdImageDestroy(up_catmull);
 	gdImageDestroy(up_auto);
 	gdImageDestroy(up_src);
 }
