@@ -649,7 +649,7 @@ static inline int getPixelOverflowTCClipped(gdImagePtr im, const int x, const in
 static inline int getPixelOverflowPalette(gdImagePtr im, const int x, const int y,
                                           const int bgColor /* 31bit ARGB TC */)
 {
-    if (gdImageBoundsSafe(im, x, y)) {
+    if (gdImageBoundsSafeMacro(im, x, y)) {
         const int c = im->pixels[y][x];
         if (c == im->transparent) {
             return bgColor == -1 ? gdTrueColorAlpha(0, 0, 0, 127) : bgColor;

@@ -9,6 +9,7 @@
 #endif
 
 #include "gd.h"
+#include "gd_intern.h"
 #include "gdhelpers.h"
 #include <math.h>
 #include <stdio.h>
@@ -742,7 +743,7 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
             /* Then the bottom row */
             for (y = tim->sy - 1; y > min_y; --y) {
                 for (x = 0; x < tim->sx; ++x) {
-                    if (!gdImageBoundsSafe(prev_tim, x, y))
+                    if (!gdImageBoundsSafeMacro(prev_tim, x, y))
                         continue;
                     if (!comparewithmap(prev_tim, tim, prev_tim->pixels[y][x], tim->pixels[y][x],
                                         colorMap)) {
@@ -762,7 +763,7 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
             /* left side */
             for (x = 0; x < min_x; ++x) {
                 for (y = min_y; y <= max_y; ++y) {
-                    if (!gdImageBoundsSafe(prev_tim, x, y))
+                    if (!gdImageBoundsSafeMacro(prev_tim, x, y))
                         continue;
                     if (!comparewithmap(prev_tim, tim, prev_tim->pixels[y][x], tim->pixels[y][x],
                                         colorMap)) {
@@ -776,7 +777,7 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
             /* right side */
             for (x = tim->sx - 1; x > max_x; --x) {
                 for (y = min_y; y <= max_y; ++y) {
-                    if (!gdImageBoundsSafe(prev_tim, x, y))
+                    if (!gdImageBoundsSafeMacro(prev_tim, x, y))
                         continue;
                     if (!comparewithmap(prev_tim, tim, prev_tim->pixels[y][x], tim->pixels[y][x],
                                         colorMap)) {

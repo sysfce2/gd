@@ -126,7 +126,7 @@ BGD_DECLARE(int) gdImageScatterEx(gdImagePtr im, gdScatterPtr scatter)
                 dest_x = (int)(x + ((rand() % (plus - sub)) + sub));
                 dest_y = (int)(y + ((rand() % (plus - sub)) + sub));
 
-                if (!gdImageBoundsSafe(im, dest_x, dest_y)) {
+                if (!gdImageBoundsSafeMacro(im, dest_x, dest_y)) {
                     continue;
                 }
 
@@ -159,7 +159,7 @@ gdImagePixelate(gdImagePtr im, int block_size, const unsigned int mode)
     case GD_PIXELATE_UPPERLEFT:
         for (y = 0; y < im->sy; y += block_size) {
             for (x = 0; x < im->sx; x += block_size) {
-                if (gdImageBoundsSafe(im, x, y)) {
+                if (gdImageBoundsSafeMacro(im, x, y)) {
                     int c = gdImageGetPixel(im, x, y);
                     gdImageFilledRectangle(im, x, y, x + block_size - 1, y + block_size - 1, c);
                 }
@@ -177,7 +177,7 @@ gdImagePixelate(gdImagePtr im, int block_size, const unsigned int mode)
                 /* sampling */
                 for (cy = 0; cy < block_size; cy++) {
                     for (cx = 0; cx < block_size; cx++) {
-                        if (!gdImageBoundsSafe(im, x + cx, y + cy)) {
+                        if (!gdImageBoundsSafeMacro(im, x + cx, y + cy)) {
                             continue;
                         }
                         c = gdImageGetPixel(im, x + cx, y + cy);
