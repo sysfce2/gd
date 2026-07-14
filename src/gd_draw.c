@@ -86,6 +86,7 @@ gdContextSetSourceImage(gdContextPtr context, gdImagePtr image, double x, double
     pattern = gdPathPatternCreateForImage(image);
     if (!pattern)
         return;
+    gdPathPatternSetFilter(pattern, context->state->pattern_filter);
     gdPathMatrixInitTranslate(&matrix, x, y);
     gdPathPatternSetMatrix(pattern, &matrix);
     paint = gdPaintCreateFromPattern(pattern);
@@ -114,6 +115,27 @@ gdContextSetOpacity(gdContextPtr context, double opacity)
     if (!context || !isfinite(opacity))
         return;
     context->state->opacity = CLAMP(opacity, 0.0, 1.0);
+}
+
+BGD_DECLARE(void)
+gdContextSetPatternFilter(gdContextPtr context, gdPatternFilter filter)
+{
+    if (!context)
+        return;
+    if (filter != GD_PATTERN_FILTER_FAST && filter != GD_PATTERN_FILTER_GOOD &&
+        filter != GD_PATTERN_FILTER_BEST) {
+        gd_error("gdContextSetPatternFilter: invalid filter %d.\n", (int)filter);
+        return;
+    }
+    context->state->pattern_filter = filter;
+}
+
+BGD_DECLARE(gdPatternFilter)
+gdContextGetPatternFilter(gdContextPtr context)
+{
+    if (!context)
+        return GD_PATTERN_FILTER_GOOD;
+    return context->state->pattern_filter;
 }
 
 BGD_DECLARE(void)

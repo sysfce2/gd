@@ -2,6 +2,7 @@ include_directories (BEFORE "${GD_SOURCE_DIR}/src" "${CMAKE_BINARY_DIR}")
 
 SET(TESTS_FILES
 	gif
+	scale_bench
 	uhdr
 	gif_rewrite
 )
@@ -15,6 +16,7 @@ if (PNG_FOUND)
 		save_restore
 		path_api path_arcfillimage path_imagesource path_pattern
 		patharc pathclip pathnegativearc
+		vector2d_pattern_filter
 		smiley smileylarge tiger tigerclipped
 		gif_frames tgaread
 	)
@@ -22,10 +24,6 @@ if (PNG_FOUND)
 	if (FREETYPE_FOUND)
 		LIST(APPEND TESTS_FILES text_pattern text_curve)
 	endif (FREETYPE_FOUND)
-
-	if (JPEG_FOUND)
-		LIST(APPEND TESTS_FILES copyrotated flip nnquant imagescale)
-	endif (JPEG_FOUND)
 endif (PNG_FOUND)
 
 if (JPEG_FOUND)

@@ -37,6 +37,11 @@ typedef enum { GD_EXTEND_NONE, GD_EXTEND_REPEAT, GD_EXTEND_REFLECT, GD_EXTEND_PA
 typedef enum { gdLineCapButt, gdLineCapRound, gdLineCapSquare } gdLineCap;
 typedef enum { gdLineJoinMiter, gdLineJoinRound, gdLineJoinBevel } gdLineJoin;
 typedef enum { gdFillRuleNonZero, gdFillRuleEvenOdd } gdFillRule;
+typedef enum {
+    GD_PATTERN_FILTER_FAST,
+    GD_PATTERN_FILTER_GOOD,
+    GD_PATTERN_FILTER_BEST
+} gdPatternFilter;
 
 typedef enum {
     GD_OP_CLEAR,
@@ -133,6 +138,8 @@ gdContextSetSourceImage(gdContextPtr context, gdImagePtr image, double x, double
 BGD_DECLARE(void) gdContextSetSource(gdContextPtr context, gdPaintPtr source);
 BGD_DECLARE(void) gdContextSetOperator(gdContextPtr context, gdCompositeOperator op);
 BGD_DECLARE(void) gdContextSetOpacity(gdContextPtr context, double opacity);
+BGD_DECLARE(void) gdContextSetPatternFilter(gdContextPtr context, gdPatternFilter filter);
+BGD_DECLARE(gdPatternFilter) gdContextGetPatternFilter(gdContextPtr context);
 BGD_DECLARE(void) gdContextSetFontFace(gdContextPtr context, gdFontFacePtr face);
 BGD_DECLARE(void) gdContextSetFontSize(gdContextPtr context, double size);
 BGD_DECLARE(gdTextStatus)
@@ -205,6 +212,8 @@ BGD_DECLARE(void) gdPathPatternDestroy(gdPathPatternPtr pattern);
 BGD_DECLARE(void) gdPathPatternSetExtend(gdPathPatternPtr pattern, gdExtendMode extend);
 BGD_DECLARE(void) gdPathPatternSetMatrix(gdPathPatternPtr pattern, gdPathMatrixPtr matrix);
 BGD_DECLARE(void) gdPathPatternSetOpacity(gdPathPatternPtr pattern, double opacity);
+BGD_DECLARE(void) gdPathPatternSetFilter(gdPathPatternPtr pattern, gdPatternFilter filter);
+BGD_DECLARE(gdPatternFilter) gdPathPatternGetFilter(gdPathPatternPtr pattern);
 
 /**
  * Function: gdPathMatrixInit

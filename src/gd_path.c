@@ -6,6 +6,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include "gd_errors.h"
 #include "gd_intern.h"
 #include "gd_vector2d_private.h"
 #include "gdhelpers.h"
@@ -17,6 +18,12 @@
 #include "gd_path_dash.h"
 #include "gd_path_matrix.h"
 #include "gd_span_rle.h"
+
+static int gdPatternFilterIsValid(gdPatternFilter filter)
+{
+    return filter == GD_PATTERN_FILTER_FAST || filter == GD_PATTERN_FILTER_GOOD ||
+           filter == GD_PATTERN_FILTER_BEST;
+}
 
 static gdSurfacePtr gdSurfaceSnapshotImage(gdImagePtr image)
 {
@@ -96,6 +103,7 @@ GD_VECTOR2D_INTERNAL gdPathPatternPtr gdPathPatternCreate(gdSurfacePtr surface)
         return NULL;
     pattern->ref = 1;
     pattern->extend = GD_EXTEND_NONE;
+    pattern->filter = GD_PATTERN_FILTER_GOOD;
     pattern->surface = surface;
     gdSurfaceAddRef(surface);
     pattern->opacity = 1.0;
@@ -170,12 +178,31 @@ BGD_DECLARE(void) gdPathPatternSetOpacity(gdPathPatternPtr pattern, double opaci
     pattern->opacity = CLAMP(opacity, 0.0, 1.0);
 }
 
+BGD_DECLARE(void) gdPathPatternSetFilter(gdPathPatternPtr pattern, gdPatternFilter filter)
+{
+    if (!pattern)
+        return;
+    if (!gdPatternFilterIsValid(filter)) {
+        gd_error("gdPathPatternSetFilter: invalid filter %d.\n", (int)filter);
+        return;
+    }
+    pattern->filter = filter;
+}
+
+BGD_DECLARE(gdPatternFilter) gdPathPatternGetFilter(gdPathPatternPtr pattern)
+{
+    if (!pattern)
+        return GD_PATTERN_FILTER_GOOD;
+    return pattern->filter;
+}
+
 void gdPaintSetSourceSurface(gdContextPtr context, gdSurfacePtr surface, double x, double y)
 {
     gdPathMatrix matrix;
     gdPaintPtr paint;
     gdPathPatternPtr pattern = gdPathPatternCreate(surface);
     gdPathPatternSetExtend(pattern, GD_EXTEND_NONE);
+    gdPathPatternSetFilter(pattern, context->state->pattern_filter);
     gdPathMatrixMultiply(&matrix, &matrix, &context->state->matrix);
     gdPathMatrixInitTranslate(&matrix, x, y);
     gdPathPatternSetMatrix(pattern, &matrix);
@@ -238,6 +265,7 @@ gdStatePtr gdStateCreate()
     state->stroke.join = gdLineJoinMiter;
     state->stroke.dash = NULL;
     state->op = GD_OP_OVER;
+    state->pattern_filter = GD_PATTERN_FILTER_GOOD;
     state->opacity = 1.0;
     state->font_size = 12.0;
     state->clippath = NULL;

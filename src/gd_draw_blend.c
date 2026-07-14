@@ -146,6 +146,243 @@ static inline uint32_t _surface_fetch_pixel_bilinear(gdSurfacePtr image, gd_fixe
     return bilinear_interpolation(tl, tr, bl, br, distx, disty);
 }
 
+typedef enum {
+    GD_PATTERN_SAMPLER_NEAREST,
+    GD_PATTERN_SAMPLER_BILINEAR,
+    GD_PATTERN_SAMPLER_MIP_NEAREST,
+    GD_PATTERN_SAMPLER_MIP_LINEAR,
+    GD_PATTERN_SAMPLER_MITCHELL
+} gdPatternSamplerKind;
+
+typedef struct {
+    gdPatternSamplerKind kind;
+    gdSurfacePtr mips[32];
+    int mip_count;
+    double mip_level;
+} gdPatternSampler;
+
+static inline uint8_t argb_a(uint32_t c) { return (uint8_t)(c >> 24); }
+static inline uint8_t argb_r(uint32_t c) { return (uint8_t)(c >> 16); }
+static inline uint8_t argb_g(uint32_t c) { return (uint8_t)(c >> 8); }
+static inline uint8_t argb_b(uint32_t c) { return (uint8_t)c; }
+
+static inline uint32_t argb_pack(int a, int r, int g, int b)
+{
+    return ((uint32_t)CLIP(a, 0, 255) << 24) | ((uint32_t)CLIP(r, 0, 255) << 16) |
+           ((uint32_t)CLIP(g, 0, 255) << 8) | (uint32_t)CLIP(b, 0, 255);
+}
+
+static inline uint32_t fetch_pixel_extended(gdSurfacePtr surface, int x, int y,
+                                            gdExtendMode extend)
+{
+    if (!_update_w_repeat(extend, &x, surface->width) ||
+        !_update_w_repeat(extend, &y, surface->height)) {
+        return 0;
+    }
+    return fetch_pixel_general(surface, x, y, 0);
+}
+
+static uint32_t surface_fetch_pixel_nearest(gdSurfacePtr image, gd_fixed_t x, gd_fixed_t y,
+                                            gdExtendMode extend)
+{
+    return fetch_pixel_extended(image, gd_fixed_to_int(x), gd_fixed_to_int(y), extend);
+}
+
+static gd_fixed_t scale_fixed_for_level(gd_fixed_t v, int level)
+{
+    if (level <= 0)
+        return v;
+    if (level >= 30)
+        return v < 0 ? -1 : 0;
+    return v / (1 << level);
+}
+
+static gdSurfacePtr pattern_surface_for_level(const gdSurfacePtr base,
+                                              const gdPatternSampler *sampler, int level)
+{
+    if (level <= 0)
+        return base;
+    if (level > sampler->mip_count)
+        level = sampler->mip_count;
+    return sampler->mips[level - 1];
+}
+
+static uint32_t lerp_argb32(uint32_t c0, uint32_t c1, double t)
+{
+    const double u = 1.0 - t;
+    return argb_pack((int)floor(argb_a(c0) * u + argb_a(c1) * t + 0.5),
+                     (int)floor(argb_r(c0) * u + argb_r(c1) * t + 0.5),
+                     (int)floor(argb_g(c0) * u + argb_g(c1) * t + 0.5),
+                     (int)floor(argb_b(c0) * u + argb_b(c1) * t + 0.5));
+}
+
+static uint32_t sample_bilinear_level(gdSurfacePtr base, const gdPatternSampler *sampler,
+                                      gd_fixed_t x, gd_fixed_t y, gdExtendMode extend, int level)
+{
+    gdSurfacePtr surface = pattern_surface_for_level(base, sampler, level);
+    return _surface_fetch_pixel_bilinear(surface, scale_fixed_for_level(x, level),
+                                         scale_fixed_for_level(y, level), extend);
+}
+
+static double mitchell_weight(double x)
+{
+    const double B = 1.0 / 3.0;
+    const double C = 1.0 / 3.0;
+
+    x = fabs(x);
+    if (x < 1.0) {
+        return ((12.0 - 9.0 * B - 6.0 * C) * x * x * x +
+                (-18.0 + 12.0 * B + 6.0 * C) * x * x + (6.0 - 2.0 * B)) /
+               6.0;
+    }
+    if (x < 2.0) {
+        return ((-B - 6.0 * C) * x * x * x + (6.0 * B + 30.0 * C) * x * x +
+                (-12.0 * B - 48.0 * C) * x + (8.0 * B + 24.0 * C)) /
+               6.0;
+    }
+    return 0.0;
+}
+
+static uint32_t clamp_premul_argb(double a, double r, double g, double b)
+{
+    int ai = CLIP((int)floor(a + 0.5), 0, 255);
+    int ri = CLIP((int)floor(r + 0.5), 0, ai);
+    int gi = CLIP((int)floor(g + 0.5), 0, ai);
+    int bi = CLIP((int)floor(b + 0.5), 0, ai);
+    return argb_pack(ai, ri, gi, bi);
+}
+
+static uint32_t surface_fetch_pixel_mitchell(gdSurfacePtr image, gd_fixed_t x, gd_fixed_t y,
+                                             gdExtendMode extend)
+{
+    const double sx = (double)x / gd_fixed_1 - 0.5;
+    const double sy = (double)y / gd_fixed_1 - 0.5;
+    const int ix = (int)floor(sx);
+    const int iy = (int)floor(sy);
+    double a = 0.0, r = 0.0, g = 0.0, b = 0.0;
+
+    for (int yy = -1; yy <= 2; yy++) {
+        const int py = iy + yy;
+        const double wy = mitchell_weight((double)py - sy);
+        for (int xx = -1; xx <= 2; xx++) {
+            const int px = ix + xx;
+            const double w = wy * mitchell_weight((double)px - sx);
+            uint32_t c;
+            if (w == 0.0)
+                continue;
+            c = fetch_pixel_extended(image, px, py, extend);
+            a += argb_a(c) * w;
+            r += argb_r(c) * w;
+            g += argb_g(c) * w;
+            b += argb_b(c) * w;
+        }
+    }
+    return clamp_premul_argb(a, r, g, b);
+}
+
+static gdSurfacePtr pattern_create_next_mip(gdSurfacePtr prev)
+{
+    const int width = prev->width > 1 ? prev->width / 2 : 1;
+    const int height = prev->height > 1 ? prev->height / 2 : 1;
+    gdSurfacePtr next = gdSurfaceCreate(width, height, GD_SURFACE_ARGB32);
+
+    if (!next)
+        return NULL;
+    for (int y = 0; y < height; y++) {
+        uint32_t *dst = (uint32_t *)(next->data + y * next->stride);
+        for (int x = 0; x < width; x++) {
+            const int sx0 = MIN(x * 2, prev->width - 1);
+            const int sx1 = MIN(sx0 + 1, prev->width - 1);
+            const int sy0 = MIN(y * 2, prev->height - 1);
+            const int sy1 = MIN(sy0 + 1, prev->height - 1);
+            const uint32_t c00 = fetch_pixel_general(prev, sx0, sy0, 0);
+            const uint32_t c10 = fetch_pixel_general(prev, sx1, sy0, 0);
+            const uint32_t c01 = fetch_pixel_general(prev, sx0, sy1, 0);
+            const uint32_t c11 = fetch_pixel_general(prev, sx1, sy1, 0);
+            dst[x] = argb_pack((argb_a(c00) + argb_a(c10) + argb_a(c01) + argb_a(c11) + 2) / 4,
+                               (argb_r(c00) + argb_r(c10) + argb_r(c01) + argb_r(c11) + 2) / 4,
+                               (argb_g(c00) + argb_g(c10) + argb_g(c01) + argb_g(c11) + 2) / 4,
+                               (argb_b(c00) + argb_b(c10) + argb_b(c01) + argb_b(c11) + 2) / 4);
+        }
+    }
+    return next;
+}
+
+static int pattern_build_mips(gdSurfacePtr base, gdPatternSampler *sampler, int level_needed)
+{
+    gdSurfacePtr prev = base;
+
+    while (sampler->mip_count < level_needed && sampler->mip_count < 32 &&
+           (prev->width > 1 || prev->height > 1)) {
+        gdSurfacePtr next = pattern_create_next_mip(prev);
+        if (!next)
+            return 0;
+        sampler->mips[sampler->mip_count++] = next;
+        prev = next;
+    }
+    return sampler->mip_count > 0;
+}
+
+static void pattern_sampler_destroy(gdPatternSampler *sampler)
+{
+    for (int i = 0; i < sampler->mip_count; i++)
+        gdSurfaceDestroy(sampler->mips[i]);
+    sampler->mip_count = 0;
+}
+
+static void pattern_sampler_init(gdPatternSampler *sampler, gdSurfacePtr surface,
+                                 const gdPathMatrixPtr matrix, gdPatternFilter filter)
+{
+    double source_per_device_x, source_per_device_y, scale, mip_level;
+    int needed_level;
+
+    memset(sampler, 0, sizeof(*sampler));
+    sampler->kind = GD_PATTERN_SAMPLER_BILINEAR;
+
+    if (filter == GD_PATTERN_FILTER_FAST) {
+        sampler->kind = GD_PATTERN_SAMPLER_NEAREST;
+        return;
+    }
+
+    source_per_device_x = hypot(matrix->m00, matrix->m10);
+    source_per_device_y = hypot(matrix->m01, matrix->m11);
+    if (!isfinite(source_per_device_x) || !isfinite(source_per_device_y) ||
+        source_per_device_x <= 0.0 || source_per_device_y <= 0.0) {
+        sampler->kind =
+            filter == GD_PATTERN_FILTER_BEST ? GD_PATTERN_SAMPLER_MITCHELL
+                                             : GD_PATTERN_SAMPLER_BILINEAR;
+        return;
+    }
+
+    scale = MIN(1.0 / source_per_device_x, 1.0 / source_per_device_y);
+    if (scale < 1.0) {
+        mip_level = -log(scale) / log(2.0) - 0.5;
+        if (mip_level > 0.0) {
+            sampler->mip_level = mip_level;
+            if (filter == GD_PATTERN_FILTER_BEST) {
+                needed_level = (int)ceil(mip_level);
+                if (pattern_build_mips(surface, sampler, needed_level)) {
+                    sampler->kind = GD_PATTERN_SAMPLER_MIP_LINEAR;
+                    return;
+                }
+            } else {
+                needed_level = (int)floor(mip_level + 0.5);
+                if (needed_level > 0 && pattern_build_mips(surface, sampler, needed_level)) {
+                    sampler->kind = GD_PATTERN_SAMPLER_MIP_NEAREST;
+                    return;
+                }
+            }
+        }
+    }
+
+    sampler->kind =
+        filter == GD_PATTERN_FILTER_BEST ? GD_PATTERN_SAMPLER_MITCHELL : GD_PATTERN_SAMPLER_BILINEAR;
+}
+
+struct _spans_pattern;
+static uint32_t pattern_sample_argb32(const struct _spans_pattern *pattern, gd_fixed_t x,
+                                      gd_fixed_t y);
+
 #define ALPHA(c) ((c) >> 24)
 static void operator_argb_color_source(uint32_t *dest, int length, uint32_t color, uint32_t alpha)
 {
@@ -263,9 +500,11 @@ void gdBlendColor(gdContextPtr context, const gdSpanRlePtr rle, const gdColorPtr
     }
 }
 
-typedef struct {
+typedef struct _spans_pattern {
     gdPathMatrix matrix;
     gdExtendMode extend;
+    gdPatternFilter filter;
+    gdPatternSampler sampler;
     uint8_t *data;
     gdSurfacePtr surface;
     int width;
@@ -273,6 +512,37 @@ typedef struct {
     int stride;
     int alpha;
 } _spans_pattern;
+
+static uint32_t pattern_sample_argb32(const _spans_pattern *pattern, gd_fixed_t x, gd_fixed_t y)
+{
+    const gdPatternSampler *sampler = &pattern->sampler;
+
+    switch (sampler->kind) {
+    case GD_PATTERN_SAMPLER_NEAREST:
+        return surface_fetch_pixel_nearest(pattern->surface, x, y, pattern->extend);
+    case GD_PATTERN_SAMPLER_MIP_NEAREST: {
+        int level = (int)floor(sampler->mip_level + 0.5);
+        return sample_bilinear_level(pattern->surface, sampler, x, y, pattern->extend, level);
+    }
+    case GD_PATTERN_SAMPLER_MIP_LINEAR: {
+        int level0 = (int)floor(sampler->mip_level);
+        int level1 = level0 + 1;
+        double t = sampler->mip_level - level0;
+        uint32_t c0;
+        uint32_t c1;
+        if (level1 > sampler->mip_count)
+            level1 = sampler->mip_count;
+        c0 = sample_bilinear_level(pattern->surface, sampler, x, y, pattern->extend, level0);
+        c1 = sample_bilinear_level(pattern->surface, sampler, x, y, pattern->extend, level1);
+        return lerp_argb32(c0, c1, t);
+    }
+    case GD_PATTERN_SAMPLER_MITCHELL:
+        return surface_fetch_pixel_mitchell(pattern->surface, x, y, pattern->extend);
+    case GD_PATTERN_SAMPLER_BILINEAR:
+    default:
+        return _surface_fetch_pixel_bilinear(pattern->surface, x, y, pattern->extend);
+    }
+}
 
 // TODO: Once the rest is a tat bit faster, use func ptr for all but *_compose_source
 // Macros are not an option, unreadable and painful to debug.
@@ -323,8 +593,8 @@ static void argb32_compose(gdCompositeOperator op, uint32_t *dest, int length, c
 
 #define BUFFER_SIZE 1024
 static void render_spans_compose_source(const gdSurface *surface, const _spans_pattern *pattern,
-                                        uint32_t *buffer, const gdExtendMode extend, int fdx,
-                                        int fdy, int count, gdSpanPtr spans)
+                                        uint32_t *buffer, int fdx, int fdy, int count,
+                                        gdSpanPtr spans)
 {
     while (count--) {
         uint32_t *target = (uint32_t *)(surface->data + spans->y * surface->stride) + spans->x;
@@ -341,7 +611,7 @@ static void render_spans_compose_source(const gdSurface *surface, const _spans_p
             const uint32_t *end = buffer + l;
             uint32_t *b = buffer;
             while (b < end) {
-                *b = _surface_fetch_pixel_bilinear(pattern->surface, x, y, extend);
+                *b = pattern_sample_argb32(pattern, x, y);
                 x += fdx;
                 y += fdy;
                 ++b;
@@ -356,8 +626,7 @@ static void render_spans_compose_source(const gdSurface *surface, const _spans_p
 
 static void render_spans_compose_source_over(const gdSurface *surface,
                                              const _spans_pattern *pattern, uint32_t *buffer,
-                                             const gdExtendMode extend, int fdx, int fdy, int count,
-                                             gdSpanPtr spans)
+                                             int fdx, int fdy, int count, gdSpanPtr spans)
 {
     while (count--) {
         uint32_t *target = (uint32_t *)(surface->data + spans->y * surface->stride) + spans->x;
@@ -374,7 +643,7 @@ static void render_spans_compose_source_over(const gdSurface *surface,
             const uint32_t *end = buffer + l;
             uint32_t *b = buffer;
             while (b < end) {
-                *b = _surface_fetch_pixel_bilinear(pattern->surface, x, y, extend);
+                *b = pattern_sample_argb32(pattern, x, y);
                 x += fdx;
                 y += fdy;
                 ++b;
@@ -388,8 +657,8 @@ static void render_spans_compose_source_over(const gdSurface *surface,
 }
 
 static void render_spans_compose_dst_in(const gdSurface *surface, const _spans_pattern *pattern,
-                                        uint32_t *buffer, const gdExtendMode extend, int fdx,
-                                        int fdy, int count, gdSpanPtr spans)
+                                        uint32_t *buffer, int fdx, int fdy, int count,
+                                        gdSpanPtr spans)
 {
     while (count--) {
         uint32_t *target = (uint32_t *)(surface->data + spans->y * surface->stride) + spans->x;
@@ -406,7 +675,7 @@ static void render_spans_compose_dst_in(const gdSurface *surface, const _spans_p
             const uint32_t *end = buffer + l;
             uint32_t *b = buffer;
             while (b < end) {
-                *b = _surface_fetch_pixel_bilinear(pattern->surface, x, y, extend);
+                *b = pattern_sample_argb32(pattern, x, y);
                 x += fdx;
                 y += fdy;
                 ++b;
@@ -420,8 +689,8 @@ static void render_spans_compose_dst_in(const gdSurface *surface, const _spans_p
 }
 
 static void render_spans_compose_dst_out(const gdSurface *surface, const _spans_pattern *pattern,
-                                         uint32_t *buffer, const gdExtendMode extend, int fdx,
-                                         int fdy, int count, gdSpanPtr spans)
+                                         uint32_t *buffer, int fdx, int fdy, int count,
+                                         gdSpanPtr spans)
 {
     while (count--) {
         uint32_t *target = (uint32_t *)(surface->data + spans->y * surface->stride) + spans->x;
@@ -438,7 +707,7 @@ static void render_spans_compose_dst_out(const gdSurface *surface, const _spans_
             const uint32_t *end = buffer + l;
             uint32_t *b = buffer;
             while (b < end) {
-                *b = _surface_fetch_pixel_bilinear(pattern->surface, x, y, extend);
+                *b = pattern_sample_argb32(pattern, x, y);
                 x += fdx;
                 y += fdy;
                 ++b;
@@ -452,8 +721,8 @@ static void render_spans_compose_dst_out(const gdSurface *surface, const _spans_
 }
 
 static void render_spans_compose(const gdSurface *surface, gdCompositeOperator op,
-                                 const _spans_pattern *pattern, uint32_t *buffer,
-                                 gdExtendMode extend, int fdx, int fdy, int count, gdSpanPtr spans)
+                                 const _spans_pattern *pattern, uint32_t *buffer, int fdx, int fdy,
+                                 int count, gdSpanPtr spans)
 {
     while (count--) {
         uint32_t *target = (uint32_t *)(surface->data + spans->y * surface->stride) + spans->x;
@@ -468,7 +737,7 @@ static void render_spans_compose(const gdSurface *surface, gdCompositeOperator o
         while (length) {
             int l = MIN(length, BUFFER_SIZE);
             for (int i = 0; i < l; i++) {
-                buffer[i] = _surface_fetch_pixel_bilinear(pattern->surface, x, y, extend);
+                buffer[i] = pattern_sample_argb32(pattern, x, y);
                 x += fdx;
                 y += fdy;
             }
@@ -485,26 +754,25 @@ static void argb32_pattern_tiled_blend_transformed(gdSurfacePtr surface, gdImage
                                                    const _spans_pattern *pattern)
 {
     uint32_t buffer[BUFFER_SIZE];
-    const gdExtendMode extend = pattern->extend;
     int fdx = gd_double_to_fixed(pattern->matrix.m00);
     int fdy = gd_double_to_fixed(pattern->matrix.m10);
     int count = rle->spans.size;
     gdSpanPtr spans = rle->spans.data;
     switch (op) {
     case gdImageOpsSrc:
-        render_spans_compose_source(surface, pattern, buffer, extend, fdx, fdy, count, spans);
+        render_spans_compose_source(surface, pattern, buffer, fdx, fdy, count, spans);
         break;
     case gdImageOpsSrcOver:
-        render_spans_compose_source_over(surface, pattern, buffer, extend, fdx, fdy, count, spans);
+        render_spans_compose_source_over(surface, pattern, buffer, fdx, fdy, count, spans);
         break;
     case gdImageOpsDstIn:
-        render_spans_compose_dst_in(surface, pattern, buffer, extend, fdx, fdy, count, spans);
+        render_spans_compose_dst_in(surface, pattern, buffer, fdx, fdy, count, spans);
         break;
     case gdImageOpsDstOut:
-        render_spans_compose_dst_out(surface, pattern, buffer, extend, fdx, fdy, count, spans);
+        render_spans_compose_dst_out(surface, pattern, buffer, fdx, fdy, count, spans);
         break;
     default:
-        render_spans_compose(surface, op, pattern, buffer, extend, fdx, fdy, count, spans);
+        render_spans_compose(surface, op, pattern, buffer, fdx, fdy, count, spans);
         break;
     }
 }
@@ -595,6 +863,7 @@ void gdDrawBlendPattern(gdContextPtr context, const gdSpanRlePtr rle,
     gdStatePtr state = context->state;
     _spans_pattern pattern_impl;
     pattern_impl.extend = pattern->extend;
+    pattern_impl.filter = pattern->filter;
     pattern_impl.data = pattern->surface->data;
     pattern_impl.surface = pattern->surface;
     pattern_impl.width = pattern->surface->width;
@@ -605,11 +874,15 @@ void gdDrawBlendPattern(gdContextPtr context, const gdSpanRlePtr rle,
     pattern_impl.matrix = pattern->matrix;
     gdPathMatrixMultiply(&pattern_impl.matrix, &pattern_impl.matrix, &state->matrix);
     gdPathMatrixInvert(&pattern_impl.matrix);
+    pattern_sampler_init(&pattern_impl.sampler, pattern_impl.surface, &pattern_impl.matrix,
+                         pattern_impl.filter);
 
     const gdPathMatrixPtr matrix = &pattern_impl.matrix;
     int translating =
         (matrix->m00 == 1.0 && matrix->m10 == 0.0 && matrix->m01 == 0.0 && matrix->m11 == 1.0);
-    if (translating) {
+    int integer_translation = translating && floor(matrix->m02) == matrix->m02 &&
+                              floor(matrix->m12) == matrix->m12;
+    if (integer_translation) {
         if (pattern->extend == GD_EXTEND_NONE)
             argb32_pattern_blend_untransformed(context->surface, state->op, rle, &pattern_impl);
         else
@@ -621,6 +894,7 @@ void gdDrawBlendPattern(gdContextPtr context, const gdSpanRlePtr rle,
         else
             argb32_pattern_tiled_blend_transformed(context->surface, state->op, rle, &pattern_impl);
     }
+    pattern_sampler_destroy(&pattern_impl.sampler);
 }
 
 static unsigned int rle_coverage_at(const gdSpanRlePtr rle, int x, int y, int *cursor)
@@ -648,8 +922,7 @@ static gdPremulPixelF pattern_pixel_at(const _spans_pattern *pattern, int px, in
                                       pattern->matrix.m02);
     gd_fixed_t y = gd_double_to_fixed(pattern->matrix.m11 * cy + pattern->matrix.m10 * cx +
                                       pattern->matrix.m12);
-    return gdCompositePixelFromArgb32(
-        _surface_fetch_pixel_bilinear(pattern->surface, x, y, pattern->extend));
+    return gdCompositePixelFromArgb32(pattern_sample_argb32(pattern, x, y));
 }
 
 typedef struct {
@@ -723,10 +996,12 @@ static void blend_unbounded(gdContextPtr context, const gdSpanRlePtr shape)
     } else if (source->type == gdPaintTypePattern) {
         gdPathPatternPtr p = source->pattern;
         pattern.extend = p->extend;
+        pattern.filter = p->filter;
         pattern.surface = p->surface;
         pattern.matrix = p->matrix;
         gdPathMatrixMultiply(&pattern.matrix, &pattern.matrix, &state->matrix);
         gdPathMatrixInvert(&pattern.matrix);
+        pattern_sampler_init(&pattern.sampler, pattern.surface, &pattern.matrix, pattern.filter);
         paint_opacity *= (float)p->opacity;
     } else if (source->type == gdPaintTypeGradient) {
         gradient_sampler_init(&gradient, source->gradient, state);
@@ -755,6 +1030,8 @@ static void blend_unbounded(gdContextPtr context, const gdSpanRlePtr shape)
             row[x] = gdCompositePixelToArgb32(result);
         }
     }
+    if (source->type == gdPaintTypePattern)
+        pattern_sampler_destroy(&pattern.sampler);
 }
 
 void gdPathBlend(gdContextPtr context, const gdSpanRlePtr rle)
