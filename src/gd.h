@@ -246,35 +246,62 @@ BGD_DECLARE(int) gdLayerOverlay(int dest, int src);
 BGD_DECLARE(int) gdLayerMultiply(int dest, int src);
 
 /**
- * Group: Transform
- *
  * Constants: gdInterpolationMethod
  *
- *  GD_BELL				 - Bell
- *  GD_BESSEL			 - Bessel
- *  GD_BILINEAR_FIXED 	 - compatibility alias for bilinear
- *  GD_BICUBIC 			 - Bicubic
- *  GD_BICUBIC_FIXED 	 - compatibility alias for bicubic
- *  GD_BLACKMAN			 - Blackman
- *  GD_BOX				 - Box
- *  GD_BSPLINE			 - BSpline
- *  GD_CATMULLROM		 - Catmullrom
- *  GD_GAUSSIAN			 - Gaussian
- *  GD_GENERALIZED_CUBIC - Generalized cubic
- *  GD_HERMITE			 - Hermite
- *  GD_HAMMING			 - Hamming
- *  GD_HANNING			 - Hannig
- *  GD_MITCHELL			 - Mitchell
- *  GD_NEAREST_NEIGHBOUR - Nearest neighbour interpolation
- *  GD_POWER			 - Power
- *  GD_QUADRATIC		 - Quadratic
- *  GD_SINC				 - Sinc
- *  GD_TRIANGLE       - Triangle
- *  GD_WEIGHTED4		 - 4 pixels weighted bilinear interpolation
- *  GD_LINEAR            - bilinear interpolation
+ * Interpolation kernels used by image scaling, rotation and affine
+ * transformation functions. Newly-created images use <GD_BILINEAR_FIXED>
+ * by default. Call <gdImageSetInterpolationMethod> on the source image before
+ * using APIs that read the image's current interpolation method.
+ *
+ * <gdImageScaleWithOptions> can either use one of these values explicitly or
+ * use <GD_SCALE_INTERPOLATION_AUTO> to choose a method from the requested
+ * scale direction.
+ *
+ *  GD_DEFAULT            - Compatibility default. Setting this resolves to <GD_LINEAR>.
+ *  GD_BELL               - Bell filter.
+ *  GD_BESSEL             - Bessel filter.
+ *  GD_BILINEAR_FIXED     - Compatibility bilinear scaler.
+ *  GD_BICUBIC            - Bicubic interpolation.
+ *  GD_BICUBIC_FIXED      - Compatibility bicubic scaler.
+ *  GD_BLACKMAN           - Blackman filter.
+ *  GD_BOX                - Box filter.
+ *  GD_BSPLINE            - B-spline filter.
+ *  GD_CATMULLROM         - Catmull-Rom filter.
+ *  GD_GAUSSIAN           - Gaussian filter.
+ *  GD_GENERALIZED_CUBIC  - Generalized cubic filter.
+ *  GD_HERMITE            - Hermite filter.
+ *  GD_HAMMING            - Hamming filter.
+ *  GD_HANNING            - Hanning filter.
+ *  GD_MITCHELL           - Mitchell filter.
+ *  GD_NEAREST_NEIGHBOUR  - Nearest-neighbour interpolation.
+ *  GD_POWER              - Power filter.
+ *  GD_QUADRATIC          - Quadratic filter.
+ *  GD_SINC               - Sinc filter.
+ *  GD_TRIANGLE           - Triangle filter.
+ *  GD_WEIGHTED4          - Four-pixel weighted interpolation for rotation and affine sampling.
+ *  GD_LINEAR             - Bilinear interpolation.
+ *  GD_LANCZOS3           - Lanczos filter with radius 3.
+ *  GD_LANCZOS8           - Lanczos filter with radius 8.
+ *  GD_BLACKMAN_BESSEL    - Blackman-windowed Bessel filter.
+ *  GD_BLACKMAN_SINC      - Blackman-windowed sinc filter.
+ *  GD_QUADRATIC_BSPLINE  - Quadratic B-spline filter.
+ *  GD_CUBIC_SPLINE       - Cubic spline filter.
+ *  GD_COSINE             - Cosine filter.
+ *  GD_WELSH              - Welsh filter.
+ *
+ * Notes:
+ *   <GD_WEIGHTED4> is not supported by <gdImageScale>. For downscales or
+ *   mixed-axis scales, <gdImageScale> maps the fixed compatibility methods
+ *   (<GD_DEFAULT>, <GD_BILINEAR_FIXED>, <GD_LINEAR>, <GD_BICUBIC_FIXED> and
+ *   <GD_BICUBIC>) to <GD_TRIANGLE> to avoid the blur and aliasing of the old
+ *   fixed scalers.
  *
  * See also:
  *  - <gdImageSetInterpolationMethod>
+ *  - <gdImageScale>
+ *  - <gdImageScaleWithOptions>
+ *  - <gdImageRotateInterpolated>
+ *  - <gdTransformAffineCopy>
  */
 typedef enum {
     GD_DEFAULT = 0,
@@ -2405,13 +2432,104 @@ typedef struct {
 BGD_DECLARE(gdImagePtr)
 gdImageAutoCropWithOptions(gdImagePtr src, const gdAutoCropOptions *options);
 
+/**
+ * Group: Image Transform and Scaling
+ * {
+ */
+/**
+ * Function: gdImageSetInterpolationMethod
+ *
+ * Set the interpolation method stored on an image.
+ *
+ * Scaling, rotation and affine transformation functions use this value when
+ * they sample pixels from the image. Newly-created images default to
+ * <GD_BILINEAR_FIXED>. Passing <GD_DEFAULT> is accepted and stores
+ * <GD_LINEAR>.
+ *
+ * Some transform APIs have optimized paths for specific methods. In
+ * particular, <gdImageScale> uses <GD_TRIANGLE> when downscaling or doing a
+ * mixed-axis scale with the fixed compatibility methods.
+ *
+ * Parameters:
+ *   im - The image.
+ *   id - The interpolation method.
+ *
+ * Returns:
+ *   Non-zero on success, zero on failure.
+ *
+ * See also:
+ *   - <gdInterpolationMethod>
+ *   - <gdImageGetInterpolationMethod>
+ */
 BGD_DECLARE(int)
 gdImageSetInterpolationMethod(gdImagePtr im, gdInterpolationMethod id);
+
+/**
+ * Function: gdImageGetInterpolationMethod
+ *
+ * Return the interpolation method currently stored on an image.
+ *
+ * Parameters:
+ *   im - The image.
+ *
+ * Returns:
+ *   The current interpolation method.
+ *
+ * See also:
+ *   - <gdInterpolationMethod>
+ *   - <gdImageSetInterpolationMethod>
+ */
 BGD_DECLARE(gdInterpolationMethod) gdImageGetInterpolationMethod(gdImagePtr im);
 
+/**
+ * Function: gdImageScale
+ *
+ * Scale an image to an exact width and height using the source image's current
+ * <gdInterpolationMethod>.
+ *
+ * The returned image is newly allocated and must be destroyed with
+ * <gdImageDestroy>. If the requested dimensions match the source dimensions,
+ * this function returns a clone of the source image. Width and height must be
+ * greater than zero.
+ *
+ * Notes:
+ *   <GD_WEIGHTED4> is not supported by this function. For downscales and
+ *   mixed-axis scales, the fixed compatibility methods are sampled with
+ *   <GD_TRIANGLE> for better filtering.
+ *
+ * Parameters:
+ *   src        - The source image.
+ *   new_width  - The requested output width.
+ *   new_height - The requested output height.
+ *
+ * Returns:
+ *   The scaled image on success, or NULL on failure.
+ *
+ * See also:
+ *   - <gdImageSetInterpolationMethod>
+ *   - <gdImageScaleWithOptions>
+ *   - <gdImageCopyResampled>
+ *   - <gdImageCopyResized>
+ */
 BGD_DECLARE(gdImagePtr)
 gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned int new_height);
 
+/**
+ * Constants: gdScaleFit
+ *
+ * Controls how <gdImageScaleWithOptions> maps the source aspect ratio into the
+ * requested output size.
+ *
+ *  GD_SCALE_FIT_COVER   - Preserve aspect ratio, fill the requested size and crop overflow.
+ *  GD_SCALE_FIT_CONTAIN - Preserve aspect ratio, fit entirely inside the requested size and pad the rest.
+ *  GD_SCALE_FIT_FILL    - Stretch to the requested size without preserving aspect ratio.
+ *  GD_SCALE_FIT_INSIDE  - Preserve aspect ratio and return an image no larger than the requested size.
+ *  GD_SCALE_FIT_OUTSIDE - Preserve aspect ratio and return an image no smaller than the requested size.
+ *
+ * Defaults:
+ *   When <gdImageScaleWithOptions> receives NULL options, the fit defaults to
+ *   <GD_SCALE_FIT_COVER>.
+ */
 typedef enum {
     GD_SCALE_FIT_COVER,
     GD_SCALE_FIT_CONTAIN,
@@ -2420,6 +2538,27 @@ typedef enum {
     GD_SCALE_FIT_OUTSIDE
 } gdScaleFit;
 
+/**
+ * Constants: gdScaleGravity
+ *
+ * Chooses the anchor used when <gdImageScaleWithOptions> pads or crops an
+ * image. North and south refer to the top and bottom of the output; west and
+ * east refer to the left and right.
+ *
+ *  GD_SCALE_GRAVITY_NORTHWEST - Anchor to the top-left corner.
+ *  GD_SCALE_GRAVITY_NORTH     - Anchor to the top edge.
+ *  GD_SCALE_GRAVITY_NORTHEAST - Anchor to the top-right corner.
+ *  GD_SCALE_GRAVITY_WEST      - Anchor to the left edge.
+ *  GD_SCALE_GRAVITY_CENTER    - Anchor to the center.
+ *  GD_SCALE_GRAVITY_EAST      - Anchor to the right edge.
+ *  GD_SCALE_GRAVITY_SOUTHWEST - Anchor to the bottom-left corner.
+ *  GD_SCALE_GRAVITY_SOUTH     - Anchor to the bottom edge.
+ *  GD_SCALE_GRAVITY_SOUTHEAST - Anchor to the bottom-right corner.
+ *
+ * Defaults:
+ *   When <gdImageScaleWithOptions> receives NULL options, gravity defaults to
+ *   <GD_SCALE_GRAVITY_CENTER>.
+ */
 typedef enum {
     GD_SCALE_GRAVITY_NORTHWEST,
     GD_SCALE_GRAVITY_NORTH,
@@ -2432,12 +2571,56 @@ typedef enum {
     GD_SCALE_GRAVITY_SOUTHEAST
 } gdScaleGravity;
 
+/**
+ * Constants: gdScaleStrategy
+ *
+ * Optional crop strategy for <GD_SCALE_FIT_COVER> in
+ * <gdImageScaleWithOptions>.
+ *
+ *  GD_SCALE_STRATEGY_NONE      - Crop using <gdScaleGravity> only.
+ *  GD_SCALE_STRATEGY_ENTROPY   - Prefer a high-entropy crop region.
+ *  GD_SCALE_STRATEGY_ATTENTION - Prefer a crop region with likely visual attention.
+ *
+ * Notes:
+ *   Entropy and attention strategies are valid only with
+ *   <GD_SCALE_FIT_COVER>. If a strategy cannot find an interesting crop,
+ *   <gdImageScaleWithOptions> falls back to the normal gravity-based cover
+ *   crop.
+ *
+ * Defaults:
+ *   When <gdImageScaleWithOptions> receives NULL options, strategy defaults to
+ *   <GD_SCALE_STRATEGY_NONE>.
+ */
 typedef enum {
     GD_SCALE_STRATEGY_NONE,
     GD_SCALE_STRATEGY_ENTROPY,
     GD_SCALE_STRATEGY_ATTENTION
 } gdScaleStrategy;
 
+/**
+ * Struct: gdScaleOptions
+ *
+ * Options for <gdImageScaleWithOptions>.
+ *
+ * Members:
+ *   fit              - Aspect-ratio behavior. See <gdScaleFit>.
+ *   gravity          - Crop or padding anchor. See <gdScaleGravity>.
+ *   strategy         - Optional cover-crop strategy. See <gdScaleStrategy>.
+ *   background_color - Truecolor ARGB background used for padding and for transparent palette pixels.
+ *   interpolation    - A <gdInterpolationMethod> value, or <GD_SCALE_INTERPOLATION_AUTO>.
+ *
+ * Defaults:
+ *   If the options pointer passed to <gdImageScaleWithOptions> is NULL, gd uses
+ *   <GD_SCALE_FIT_COVER>, <GD_SCALE_GRAVITY_CENTER>,
+ *   <GD_SCALE_STRATEGY_NONE>, background color 0x7f000000 and
+ *   <GD_SCALE_INTERPOLATION_AUTO>.
+ *
+ * Notes:
+ *   For palette sources, gd prepares a truecolor working copy. Transparent
+ *   pixels are replaced with background_color before scaling; if
+ *   background_color is a valid palette index, that palette entry is converted
+ *   to truecolor.
+ */
 typedef struct {
     gdScaleFit fit;
     gdScaleGravity gravity;
@@ -2446,29 +2629,164 @@ typedef struct {
     int interpolation;
 } gdScaleOptions;
 
+/**
+ * Constant: GD_SCALE_INTERPOLATION_AUTO
+ *
+ * Let <gdImageScaleWithOptions> choose the interpolation method from the scale
+ * direction.
+ *
+ * Automatic selection uses <GD_LANCZOS3> for downscales or mixed-axis scales,
+ * and <GD_CATMULLROM> for pure upscales.
+ */
 #define GD_SCALE_INTERPOLATION_AUTO -1
 
+/**
+ * Function: gdImageScaleWithOptions
+ *
+ * Scale an image using aspect-ratio, gravity, crop-strategy and interpolation
+ * options.
+ *
+ * This is the higher-level scaling API. It can stretch, contain, cover, pad or
+ * return an inside/outside size while preserving the source aspect ratio. The
+ * returned image is newly allocated and must be destroyed with
+ * <gdImageDestroy>.
+ *
+ * Parameters:
+ *   src        - The source image.
+ *   new_width  - The requested width.
+ *   new_height - The requested height.
+ *   options    - Scaling options, or NULL for the default options.
+ *
+ * Returns:
+ *   The scaled image on success, or NULL on failure.
+ *
+ * Failure:
+ *   Returns NULL if src is NULL, either dimension is zero, interpolation is
+ *   invalid, or an entropy/attention strategy is used with a fit other than
+ *   <GD_SCALE_FIT_COVER>.
+ *
+ * See also:
+ *   - <gdScaleOptions>
+ *   - <gdImageScale>
+ *   - <gdImageInterestingCropRegion>
+ */
 BGD_DECLARE(gdImagePtr)
 gdImageScaleWithOptions(const gdImagePtr src, const unsigned int new_width,
                         const unsigned int new_height, const gdScaleOptions *options);
 
+/**
+ * Group: Image Transform and Scaling
+ *
+ * Constants: gdInterestingMethod
+ *
+ * Methods used to find an interesting crop region.
+ *
+ *  GD_INTERESTING_ENTROPY   - Prefer regions with higher image entropy.
+ *  GD_INTERESTING_ATTENTION - Prefer regions with likely visual attention.
+ *
+ * See also:
+ *   - <gdImageInterestingCropRegion>
+ *   - <gdImageScaleWithOptions>
+ */
 typedef enum {
 	GD_INTERESTING_ENTROPY,
 	GD_INTERESTING_ATTENTION
 } gdInterestingMethod;
 
+/**
+ * Group: Image Transform and Scaling
+ *
+ * Function: gdImageInterestingCropRegion
+ *
+ * Find a source crop region with the requested aspect ratio using an
+ * interesting-region method.
+ *
+ * Parameters:
+ *   src           - The source image.
+ *   target_width  - The target width used to compute the crop aspect ratio.
+ *   target_height - The target height used to compute the crop aspect ratio.
+ *   method        - The interesting-region method.
+ *   crop          - Receives the crop rectangle on success.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ *
+ * See also:
+ *   - <gdInterestingMethod>
+ *   - <gdImageEntropyCropRegion>
+ *   - <gdImageScaleWithOptions>
+ */
 BGD_DECLARE(int)
 gdImageInterestingCropRegion(const gdImagePtr src, unsigned int target_width,
                              unsigned int target_height, gdInterestingMethod method,
                              gdRectPtr crop);
 
+/**
+ * Group: Image Transform and Scaling
+ *
+ * Function: gdImageEntropyCropRegion
+ *
+ * Find a high-entropy source crop region with the requested aspect ratio.
+ *
+ * Parameters:
+ *   src           - The source image.
+ *   target_width  - The target width used to compute the crop aspect ratio.
+ *   target_height - The target height used to compute the crop aspect ratio.
+ *   crop          - Receives the crop rectangle on success.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ *
+ * See also:
+ *   - <gdImageInterestingCropRegion>
+ */
 BGD_DECLARE(int)
 gdImageEntropyCropRegion(const gdImagePtr src, unsigned int target_width,
                          unsigned int target_height, gdRectPtr crop);
 
+/**
+ * Function: gdImageRotateInterpolated
+ *
+ * Rotate an image by an arbitrary angle using the source image's current
+ * <gdInterpolationMethod>.
+ *
+ * The returned image is newly allocated and must be destroyed with
+ * <gdImageDestroy>. Palette sources are converted to truecolor internally for
+ * arbitrary-angle rotation. Angles that are multiples of 90 degrees use the
+ * optimized rotate paths.
+ *
+ * Parameters:
+ *   src     - The source image.
+ *   angle   - Rotation angle in degrees.
+ *   bgcolor - Background color for uncovered pixels. For palette sources, this may be a palette index.
+ *
+ * Returns:
+ *   The rotated image on success, or NULL on failure.
+ *
+ * Notes:
+ *   bgcolor must be non-negative. The source interpolation method must be a
+ *   valid concrete method; <GD_DEFAULT> is not accepted by this function.
+ *
+ * See also:
+ *   - <gdImageSetInterpolationMethod>
+ *   - <gdImageRotate90>
+ *   - <gdImageRotate180>
+ *   - <gdImageRotate270>
+ */
 BGD_DECLARE(gdImagePtr)
 gdImageRotateInterpolated(const gdImagePtr src, const float angle, int bgcolor);
 
+/**
+ * Constants: gdAffineStandardMatrix
+ *
+ * Standard affine matrix operations.
+ *
+ *  GD_AFFINE_TRANSLATE        - Translation matrix.
+ *  GD_AFFINE_SCALE            - Scale matrix.
+ *  GD_AFFINE_ROTATE           - Rotation matrix.
+ *  GD_AFFINE_SHEAR_HORIZONTAL - Horizontal shear matrix.
+ *  GD_AFFINE_SHEAR_VERTICAL   - Vertical shear matrix.
+ */
 typedef enum {
     GD_AFFINE_TRANSLATE = 0,
     GD_AFFINE_SCALE,
@@ -2477,29 +2795,261 @@ typedef enum {
     GD_AFFINE_SHEAR_VERTICAL
 } gdAffineStandardMatrix;
 
+/**
+ * Function: gdAffineApplyToPointF
+ *
+ * Apply an affine matrix to a floating-point point.
+ *
+ * Parameters:
+ *   dst    - Receives the transformed point.
+ *   src    - Source point.
+ *   affine - Matrix in gd's six-value affine form.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int)
 gdAffineApplyToPointF(gdPointFPtr dst, const gdPointFPtr src, const double affine[6]);
+
+/**
+ * Function: gdAffineInvert
+ *
+ * Invert an affine matrix.
+ *
+ * Parameters:
+ *   dst - Receives the inverse matrix.
+ *   src - Source matrix.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE if the matrix cannot be inverted.
+ */
 BGD_DECLARE(int) gdAffineInvert(double dst[6], const double src[6]);
+
+/**
+ * Function: gdAffineFlip
+ *
+ * Build a horizontal and/or vertical flip from an affine matrix.
+ *
+ * Parameters:
+ *   dst_affine - Receives the flipped matrix.
+ *   src_affine - Source matrix.
+ *   flip_h     - Non-zero to flip horizontally.
+ *   flip_v     - Non-zero to flip vertically.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int)
 gdAffineFlip(double dst_affine[6], const double src_affine[6], const int flip_h, const int flip_v);
+
+/**
+ * Function: gdAffineConcat
+ *
+ * Concatenate two affine matrices.
+ *
+ * The result is equivalent to applying m1 and then m2. The destination may be
+ * the same array as either input.
+ *
+ * Parameters:
+ *   dst - Receives the concatenated matrix.
+ *   m1  - First matrix.
+ *   m2  - Second matrix.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int)
 gdAffineConcat(double dst[6], const double m1[6], const double m2[6]);
 
+/**
+ * Function: gdAffineIdentity
+ *
+ * Store an identity affine matrix.
+ *
+ * Parameters:
+ *   dst - Receives the identity matrix.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int) gdAffineIdentity(double dst[6]);
+
+/**
+ * Function: gdAffineScale
+ *
+ * Store a scale affine matrix.
+ *
+ * Parameters:
+ *   dst     - Receives the scale matrix.
+ *   scale_x - Horizontal scale factor.
+ *   scale_y - Vertical scale factor.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int)
 gdAffineScale(double dst[6], const double scale_x, const double scale_y);
+
+/**
+ * Function: gdAffineRotate
+ *
+ * Store a rotation affine matrix.
+ *
+ * In gd's image coordinate system, increasing y moves downward; positive
+ * angles rotate counterclockwise in that system.
+ *
+ * Parameters:
+ *   dst   - Receives the rotation matrix.
+ *   angle - Rotation angle in degrees.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int) gdAffineRotate(double dst[6], const double angle);
+
+/**
+ * Function: gdAffineShearHorizontal
+ *
+ * Store a horizontal shear affine matrix.
+ *
+ * Parameters:
+ *   dst   - Receives the shear matrix.
+ *   angle - Shear angle in degrees.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int) gdAffineShearHorizontal(double dst[6], const double angle);
+
+/**
+ * Function: gdAffineShearVertical
+ *
+ * Store a vertical shear affine matrix.
+ *
+ * Parameters:
+ *   dst   - Receives the shear matrix.
+ *   angle - Shear angle in degrees.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int) gdAffineShearVertical(double dst[6], const double angle);
+
+/**
+ * Function: gdAffineTranslate
+ *
+ * Store a translation affine matrix.
+ *
+ * Parameters:
+ *   dst      - Receives the translation matrix.
+ *   offset_x - Horizontal offset.
+ *   offset_y - Vertical offset.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int)
 gdAffineTranslate(double dst[6], const double offset_x, const double offset_y);
+
+/**
+ * Function: gdAffineExpansion
+ *
+ * Return the linear expansion factor of an affine matrix.
+ *
+ * This is the square root of the factor by which the matrix changes area.
+ *
+ * Parameters:
+ *   src - Source matrix.
+ *
+ * Returns:
+ *   The expansion factor.
+ */
 BGD_DECLARE(double) gdAffineExpansion(const double src[6]);
+
+/**
+ * Function: gdAffineRectilinear
+ *
+ * Test whether an affine matrix preserves axis-aligned rectangles.
+ *
+ * Parameters:
+ *   src - Source matrix.
+ *
+ * Returns:
+ *   GD_TRUE if the matrix is rectilinear, otherwise GD_FALSE.
+ */
 BGD_DECLARE(int) gdAffineRectilinear(const double src[6]);
+
+/**
+ * Function: gdAffineEqual
+ *
+ * Compare two affine matrices.
+ *
+ * Parameters:
+ *   matrix1 - First matrix.
+ *   matrix2 - Second matrix.
+ *
+ * Returns:
+ *   GD_TRUE if the matrices are equal within gd's affine tolerance, otherwise
+ *   GD_FALSE.
+ */
 BGD_DECLARE(int)
 gdAffineEqual(const double matrix1[6], const double matrix2[6]);
+
+/**
+ * Function: gdTransformAffineGetImage
+ *
+ * Apply an affine transform to a source region and create an image containing
+ * the complete transformed result.
+ *
+ * The new image is truecolor with alpha saving enabled. Areas not covered by
+ * the transformed source are transparent. The source image's current
+ * <gdInterpolationMethod> controls sampling. Palette sources may be converted
+ * to truecolor internally.
+ *
+ * Parameters:
+ *   dst      - Receives the newly-created destination image.
+ *   src      - Source image.
+ *   src_area - Source rectangle, or NULL to transform the full image.
+ *   affine   - Matrix in gd's six-value affine form.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure. On failure, *dst is NULL.
+ *
+ * See also:
+ *   - <gdTransformAffineCopy>
+ *   - <gdTransformAffineBoundingBox>
+ *   - <gdImageSetInterpolationMethod>
+ */
 BGD_DECLARE(int)
 gdTransformAffineGetImage(gdImagePtr *dst, const gdImagePtr src, gdRectPtr src_area,
                           const double affine[6]);
+
+/**
+ * Function: gdTransformAffineCopy
+ *
+ * Apply an affine transform to a source region and copy the transformed pixels
+ * into an existing destination image.
+ *
+ * The source image's current <gdInterpolationMethod> controls sampling.
+ * Transparent samples are skipped. Destination bounds and alpha-blending
+ * settings are honored.
+ *
+ * Parameters:
+ *   dst        - Destination image.
+ *   dst_x      - Destination x offset.
+ *   dst_y      - Destination y offset.
+ *   src        - Source image.
+ *   src_region - Source rectangle to transform.
+ *   affine     - Matrix in gd's six-value affine form.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ *
+ * See also:
+ *   - <gdTransformAffineGetImage>
+ *   - <gdTransformAffineBoundingBox>
+ *   - <gdImageSetInterpolationMethod>
+ */
 BGD_DECLARE(int)
 gdTransformAffineCopy(gdImagePtr dst, int dst_x, int dst_y, const gdImagePtr src,
                       gdRectPtr src_region, const double affine[6]);
@@ -2508,8 +3058,26 @@ gdTransformAffineCopy(gdImagePtr dst, int x0, int y0, int x1, int y1,
                           const gdImagePtr src, int src_width, int src_height,
                           const double affine[6]);
 */
+/**
+ * Function: gdTransformAffineBoundingBox
+ *
+ * Compute the bounding box of a source rectangle after applying an affine
+ * transform.
+ *
+ * Parameters:
+ *   src    - Source rectangle.
+ *   affine - Matrix in gd's six-value affine form.
+ *   bbox   - Receives the transformed bounding box.
+ *
+ * Returns:
+ *   GD_TRUE on success, or GD_FALSE on failure.
+ */
 BGD_DECLARE(int)
 gdTransformAffineBoundingBox(gdRectPtr src, const double affine[6], gdRectPtr bbox);
+
+/**
+ * }
+ */
 
 /**
  * Group: Image Comparison
