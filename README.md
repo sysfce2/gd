@@ -20,13 +20,13 @@ If you like to contribute, report bugs, see [how to contribute document](CONTRIB
 
 For security related issues, see [SECURITY.md](SECURITY.md).
 
-Support available in
-[![Chat](https://badges.gitter.im/libgd/libgd.svg)](https://gitter.im/libgd/libgd)
-or using issues.
+Support available here via discussions, issues reports, PRs welcome!
 
 We also have a mailing list. To subscribe to any mailing list,
 send an email to gd-devel-subscribe@lists.php.net.
 Then emails can be sent to gd-devel@lists.php.net.
+
+See the APIs docs for the massive additions to the next major release of GD  [here](https://libgd.github.io/manuals/2.4.0-dev/).
 
 ## Downloads
 
