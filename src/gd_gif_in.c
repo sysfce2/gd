@@ -135,7 +135,6 @@ typedef struct gdGifReadStruct {
     unsigned char globalColorMap[3][MAXCOLORMAPSIZE];
     unsigned char localColorMap[3][MAXCOLORMAPSIZE];
     GifGraphicControl gce;
-    gdImagePtr rawFrame;
     gdImagePtr canvas;
     gdImagePtr previousCanvas;
     gdGifFrameInfo lastInfo;
@@ -154,7 +153,7 @@ static int GifBackgroundColor(gdGifRead *gif, int transparentIndex);
 static int GifEnsureCanvas(gdGifRead *gif, int transparentIndex);
 static gdImagePtr GifCloneImage(gdImagePtr src);
 static void GifApplyPreviousDisposal(gdGifRead *gif);
-static int GifCompositeFrame(gdGifRead *gif);
+static int GifCompositeFrame(gdGifRead *gif, gdImagePtr rawFrame);
 static int GifProbeIsAnimated(gdIOCtxPtr in);
 
 static void GifResetGraphicControl(GifGraphicControl *gce)
@@ -455,7 +454,7 @@ static void GifApplyPreviousDisposal(gdGifRead *gif)
     }
 }
 
-static int GifCompositeFrame(gdGifRead *gif)
+static int GifCompositeFrame(gdGifRead *gif, gdImagePtr rawFrame)
 {
     gdGifFrameInfo *info = &gif->lastInfo;
     int x, y, c;
@@ -473,12 +472,12 @@ static int GifCompositeFrame(gdGifRead *gif)
 
     for (y = 0; y < info->height; y++) {
         for (x = 0; x < info->width; x++) {
-            c = gdImageGetPixel(gif->rawFrame, x, y);
+            c = gdImageGetPixel(rawFrame, x, y);
             if (c == info->transparentIndex) {
                 continue;
             }
             gdImageSetPixel(gif->canvas, info->x + x, info->y + y,
-                            GifFrameToColor(gif->rawFrame, c));
+                            GifFrameToColor(rawFrame, c));
         }
     }
 
@@ -679,9 +678,6 @@ BGD_DECLARE(void) gdGifReadClose(gdGifReadPtr gif)
     if (gif == NULL) {
         return;
     }
-    if (gif->rawFrame != NULL) {
-        gdImageDestroy(gif->rawFrame);
-    }
     if (gif->canvas != NULL) {
         gdImageDestroy(gif->canvas);
     }
@@ -712,6 +708,7 @@ gdGifReadNextFrame(gdGifReadPtr gif, gdGifFrameInfo *info, gdImagePtr *frame)
 {
     unsigned char buf[16], c;
     int ZeroDataBlock = FALSE;
+    gdImagePtr rawFrame = NULL;
 
     if (frame != NULL) {
         *frame = NULL;
@@ -774,37 +771,36 @@ gdGifReadNextFrame(gdGifReadPtr gif, gdGifFrameInfo *info, gdImagePtr *frame)
             gif->globalColorMap[CM_BLUE][1] = 0xff;
         }
 
-        if (gif->rawFrame != NULL) {
-            gdImageDestroy(gif->rawFrame);
-            gif->rawFrame = NULL;
-        }
-        gif->rawFrame = gdImageCreate(width, height);
-        if (gif->rawFrame == NULL) {
+        rawFrame = gdImageCreate(width, height);
+        if (rawFrame == NULL) {
             gif->error = 1;
             return -1;
         }
-        gif->rawFrame->interlace = interlace;
+        rawFrame->interlace = interlace;
 
         if (hasLocal) {
             if (ReadColorMap(gif->in, bitPixel, gif->localColorMap) ||
-                !ReadImage(gif->rawFrame, gif->in, width, height, gif->localColorMap, bitPixel,
+                !ReadImage(rawFrame, gif->in, width, height, gif->localColorMap, bitPixel,
                            interlace, &ZeroDataBlock)) {
+                gdImageDestroy(rawFrame);
                 gif->error = 1;
                 return -1;
             }
         } else {
-            if (!ReadImage(gif->rawFrame, gif->in, width, height, gif->globalColorMap,
+            if (!ReadImage(rawFrame, gif->in, width, height, gif->globalColorMap,
                            gif->globalColorCount, interlace, &ZeroDataBlock)) {
+                gdImageDestroy(rawFrame);
                 gif->error = 1;
                 return -1;
             }
         }
 
         if (gif->gce.transparent != -1) {
-            gdImageColorTransparent(gif->rawFrame, gif->gce.transparent);
+            gdImageColorTransparent(rawFrame, gif->gce.transparent);
         }
-        GifTrimColorTable(gif->rawFrame);
-        if (!gif->rawFrame->colorsTotal) {
+        GifTrimColorTable(rawFrame);
+        if (!rawFrame->colorsTotal) {
+            gdImageDestroy(rawFrame);
             gif->error = 1;
             return -1;
         }
@@ -822,7 +818,9 @@ gdGifReadNextFrame(gdGifReadPtr gif, gdGifFrameInfo *info, gdImagePtr *frame)
         gif->frameIndex++;
         GifFillFrameInfo(gif, info);
         if (frame != NULL) {
-            *frame = gif->rawFrame;
+            *frame = rawFrame;
+        } else {
+            gdImageDestroy(rawFrame);
         }
         GifResetGraphicControl(&gif->gce);
         return 1;
@@ -833,6 +831,8 @@ BGD_DECLARE(int)
 gdGifReadNextImage(gdGifReadPtr gif, gdGifFrameInfo *info, gdImagePtr *image)
 {
     int result;
+    gdImagePtr frame = NULL;
+    gdImagePtr canvas = NULL;
 
     if (image != NULL) {
         *image = NULL;
@@ -842,26 +842,25 @@ gdGifReadNextImage(gdGifReadPtr gif, gdGifFrameInfo *info, gdImagePtr *image)
     }
 
     GifApplyPreviousDisposal(gif);
-    result = gdGifReadNextFrame(gif, info, NULL);
+    result = gdGifReadNextFrame(gif, info, &frame);
     if (result <= 0) {
         return result;
     }
-    if (!GifCompositeFrame(gif)) {
+    if (!GifCompositeFrame(gif, frame)) {
+        gdImageDestroy(frame);
         gif->error = 1;
         return -1;
     }
+    gdImageDestroy(frame);
     if (image != NULL) {
-        *image = gif->canvas;
+        canvas = GifCloneImage(gif->canvas);
+        if (canvas == NULL) {
+            gif->error = 1;
+            return -1;
+        }
+        *image = canvas;
     }
     return 1;
-}
-
-BGD_DECLARE(gdImagePtr) gdGifReadCloneImage(gdGifReadPtr gif)
-{
-    if (gif == NULL) {
-        return NULL;
-    }
-    return GifCloneImage(gif->canvas);
 }
 
 /*

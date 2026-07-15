@@ -187,6 +187,7 @@ static int read_all_frames(const gif_case_t *testCase) {
 		totalDelay += frameInfo.delay;
 		check_pixels(testCase->file, frames, im);
 		frames++;
+		gdImageDestroy(im);
 	}
 
 	gdTestAssertMsg(result == 0,
@@ -232,6 +233,9 @@ static void test_invalid_cases(void) {
 
 				do {
 					result = gdGifReadNextImage(gif, &frameInfo, &im);
+					if (result == 1 && im != NULL) {
+						gdImageDestroy(im);
+					}
 				} while (result == 1);
 				gdGifReadClose(gif);
 			}

@@ -96,6 +96,7 @@ int main(int argc, char **argv)
                frameInfo.frameIndex, frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height,
                frameInfo.delay, frameInfo.disposal, frameInfo.transparentIndex,
                frameInfo.localColorTable);
+        gdImageDestroy(frame);
         frameCount++;
     }
 

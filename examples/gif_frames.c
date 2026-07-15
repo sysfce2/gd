@@ -80,13 +80,13 @@ int main(int argc, char **argv)
                frameInfo.delay, frameInfo.disposal, frameInfo.transparentIndex,
                frameInfo.localColorTable, frameInfo.interlace);
 
-        /* frameImage is borrowed from the reader and is valid until the next
-         * iterator call. */
         if (!write_png(frameImage, argv[2], frameCount)) {
+            gdImageDestroy(frameImage);
             gdGifReadClose(gif);
             fclose(in);
             return 1;
         }
+        gdImageDestroy(frameImage);
         frameCount++;
     }
 

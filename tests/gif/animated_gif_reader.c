@@ -151,7 +151,7 @@ static void test_raw_iterator(void) {
 	gdGifReadPtr gif;
 	gdGifInfo info;
 	gdGifFrameInfo frameInfo;
-	gdImagePtr frame;
+	gdImagePtr frame = NULL;
 	int count = 0;
 	int delay = 0;
 
@@ -183,6 +183,10 @@ static void test_raw_iterator(void) {
 		gdTestAssertMsg(frameInfo.delay == 50, "unexpected frame delay");
 		delay += frameInfo.delay;
 		count++;
+		if (frame != NULL) {
+			gdImageDestroy(frame);
+			frame = NULL;
+		}
 	}
 
 	gdTestAssertMsg(count == 3, "expected 3 frames, got %d", count);
@@ -195,7 +199,8 @@ static void test_local_color_table(void) {
 	FILE *fp;
 	gdGifReadPtr gif;
 	gdGifFrameInfo info;
-	gdImagePtr frame;
+	gdImagePtr firstFrame = NULL;
+	gdImagePtr secondFrame = NULL;
 
 	fp = fixture_open("local_ct.gif");
 	gdTestAssert(fp != NULL);
@@ -209,15 +214,25 @@ static void test_local_color_table(void) {
 		return;
 	}
 
-	gdTestAssert(gdGifReadNextFrame(gif, &info, &frame) == 1);
+	gdTestAssert(gdGifReadNextFrame(gif, &info, &firstFrame) == 1);
 	gdTestAssertMsg(info.localColorTable == 0,
 					"first frame should use global color table");
-	gdTestAssert(gdGifReadNextFrame(gif, &info, &frame) == 1);
+	gdTestAssert(gdGifReadNextFrame(gif, &info, &secondFrame) == 1);
 	gdTestAssertMsg(info.localColorTable == 1,
 					"second frame should use local color table");
-	gdTestAssertMsg(frame->red[1] == 255 && frame->green[1] == 128 &&
-						frame->blue[1] == 0,
-					"local palette color should be orange");
+	if (firstFrame != NULL && secondFrame != NULL) {
+		gdTestAssertMsg(firstFrame->sx == 4 && firstFrame->sy == 4,
+						"first returned raw frame should remain valid after next frame");
+		gdTestAssertMsg(secondFrame->red[1] == 255 && secondFrame->green[1] == 128 &&
+							secondFrame->blue[1] == 0,
+						"local palette color should be orange");
+	}
+	if (firstFrame != NULL) {
+		gdImageDestroy(firstFrame);
+	}
+	if (secondFrame != NULL) {
+		gdImageDestroy(secondFrame);
+	}
 
 	gdGifReadClose(gif);
 	fclose(fp);
@@ -227,7 +242,9 @@ static void test_composited_iterator(void) {
 	FILE *fp;
 	gdGifReadPtr gif;
 	gdGifFrameInfo info;
-	gdImagePtr image;
+	gdImagePtr image = NULL;
+	gdImagePtr firstImage = NULL;
+	gdImagePtr secondImage = NULL;
 
 	fp = fixture_open("small_frame_big_canvas.gif");
 	gdTestAssert(fp != NULL);
@@ -242,12 +259,15 @@ static void test_composited_iterator(void) {
 	}
 
 	gdTestAssert(gdGifReadNextImage(gif, &info, &image) == 1);
-	gdTestAssertMsg(image->sx == 16 && image->sy == 16,
-					"composited image should use canvas size");
-	gdTestAssertMsg(color_is(image, 0, 0, 200, 200, 200),
-					"canvas background should be preserved");
-	gdTestAssertMsg(color_is(image, 6, 6, 255, 0, 0),
-					"frame pixel should be composited at offset");
+	if (image != NULL) {
+		gdTestAssertMsg(image->sx == 16 && image->sy == 16,
+						"composited image should use canvas size");
+		gdTestAssertMsg(color_is(image, 0, 0, 200, 200, 200),
+						"canvas background should be preserved");
+		gdTestAssertMsg(color_is(image, 6, 6, 255, 0, 0),
+						"frame pixel should be composited at offset");
+		gdImageDestroy(image);
+	}
 	gdGifReadClose(gif);
 	fclose(fp);
 
@@ -263,14 +283,26 @@ static void test_composited_iterator(void) {
 		return;
 	}
 
-	gdTestAssert(gdGifReadNextImage(gif, &info, &image) == 1);
-	gdTestAssertMsg(color_is(image, 0, 0, 255, 0, 0),
-					"first frame should draw red left half");
-	gdTestAssert(gdGifReadNextImage(gif, &info, &image) == 1);
-	gdTestAssertMsg(color_is(image, 0, 0, 255, 255, 255),
-					"previous frame should restore to background");
-	gdTestAssertMsg(color_is(image, 4, 0, 0, 0, 255),
-					"second frame should draw blue right half");
+	gdTestAssert(gdGifReadNextImage(gif, &info, &firstImage) == 1);
+	if (firstImage != NULL) {
+		gdTestAssertMsg(color_is(firstImage, 0, 0, 255, 0, 0),
+						"first frame should draw red left half");
+	}
+	gdTestAssert(gdGifReadNextImage(gif, &info, &secondImage) == 1);
+	if (firstImage != NULL && secondImage != NULL) {
+		gdTestAssertMsg(color_is(firstImage, 0, 0, 255, 0, 0),
+						"first returned composited image should remain valid after next image");
+		gdTestAssertMsg(color_is(secondImage, 0, 0, 255, 255, 255),
+						"previous frame should restore to background");
+		gdTestAssertMsg(color_is(secondImage, 4, 0, 0, 0, 255),
+						"second frame should draw blue right half");
+	}
+	if (firstImage != NULL) {
+		gdImageDestroy(firstImage);
+	}
+	if (secondImage != NULL) {
+		gdImageDestroy(secondImage);
+	}
 
 	gdGifReadClose(gif);
 	fclose(fp);
