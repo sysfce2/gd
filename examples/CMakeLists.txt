@@ -26,7 +26,7 @@ if (PNG_FOUND)
 	endif (FREETYPE_FOUND)
 
 	if (JPEG_FOUND)
-		LIST(APPEND TESTS_FILES copyrotated flip nnquant imagescale)
+		LIST(APPEND TESTS_FILES copyrotated flip nnquant imagescale scale_entropy_visual_check)
 	endif (JPEG_FOUND)
 endif (PNG_FOUND)
 

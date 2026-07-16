@@ -54,27 +54,38 @@ static inline gdImagePtr jxlTestCreateSolid(int r, int g, int b, int a) {
 	return im;
 }
 
-static inline void *jxlTestEncodeAnimation(gdImagePtr first, int first_delay,
-										   gdImagePtr second, int second_delay,
-										   int lossless, int *size) {
-	gdJxlAnimPtr anim;
+static inline void *jxlTestEncodeAnimationWithLoop(gdImagePtr first, int first_delay,
+												   gdImagePtr second, int second_delay,
+												   int lossless, int loop_count, int *size) {
+	gdJxlWriteOptions options;
+	gdJxlWritePtr writer;
 	void *data = NULL;
 
 	*size = 0;
-	anim = gdImageJxlAnimBeginPtr(gdImageSX(first), gdImageSY(first),
-								  lossless, lossless ? 0.0f : 1.0f, 7);
-	if (anim == NULL) {
+	gdJxlWriteOptionsInit(&options);
+	options.lossless = lossless;
+	options.distance = lossless ? 0.0f : 1.0f;
+	options.loopCount = loop_count;
+	writer = gdJxlWriteOpenPtr(&options);
+	if (writer == NULL) {
 		return NULL;
 	}
 
-	if (!gdImageJxlAnimAddFrame(anim, first, first_delay) ||
-		!gdImageJxlAnimAddFrame(anim, second, second_delay)) {
-		gdImageJxlAnimEndPtr(anim, size);
+	if (!gdJxlWriteAddImage(writer, first, first_delay) ||
+		!gdJxlWriteAddImage(writer, second, second_delay)) {
+		gdJxlWritePtrFinish(writer, size);
 		return NULL;
 	}
 
-	data = gdImageJxlAnimEndPtr(anim, size);
+	data = gdJxlWritePtrFinish(writer, size);
 	return data;
+}
+
+static inline void *jxlTestEncodeAnimation(gdImagePtr first, int first_delay,
+										   gdImagePtr second, int second_delay,
+										   int lossless, int *size) {
+	return jxlTestEncodeAnimationWithLoop(first, first_delay, second, second_delay,
+										  lossless, 0, size);
 }
 
 #endif

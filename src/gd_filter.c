@@ -50,9 +50,6 @@ static int gdClampFloatToByte(float value)
 #define GD_SCATTER_SEED() (unsigned int)(time(0) * getpid())
 #endif
 
-/*
-        Function: gdImageScatter
- */
 BGD_DECLARE(int) gdImageScatter(gdImagePtr im, int sub, int plus)
 {
     gdScatter s;
@@ -64,9 +61,6 @@ BGD_DECLARE(int) gdImageScatter(gdImagePtr im, int sub, int plus)
     return gdImageScatterEx(im, &s);
 }
 
-/*
-        Function: gdImageScatterColor
- */
 BGD_DECLARE(int)
 gdImageScatterColor(gdImagePtr im, int sub, int plus, int colors[], unsigned int num_colors)
 {
@@ -80,9 +74,6 @@ gdImageScatterColor(gdImagePtr im, int sub, int plus, int colors[], unsigned int
     return gdImageScatterEx(im, &s);
 }
 
-/*
-        Function: gdImageScatterEx
- */
 BGD_DECLARE(int) gdImageScatterEx(gdImagePtr im, gdScatterPtr scatter)
 {
     register int x, y;
@@ -142,9 +133,6 @@ BGD_DECLARE(int) gdImageScatterEx(gdImagePtr im, gdScatterPtr scatter)
     return 1;
 }
 
-/*
-        Function: gdImagePixelate
- */
 BGD_DECLARE(int)
 gdImagePixelate(gdImagePtr im, int block_size, const unsigned int mode)
 {

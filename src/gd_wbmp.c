@@ -84,17 +84,6 @@ static int gd_getin(void *in) { return (gdGetC((gdIOCtx *)in)); }
 
 static int _gdImageWBMPCtx(gdImagePtr image, int fg, gdIOCtx *out);
 
-/*
-        Function: gdImageWBMPCtx
-
-        Write the image as a wbmp file
-
-        Parameters:
-                image - gd image structure
-                fg    - the index of the foreground color. any other value will be
-                                considered as background and will not be written
-                out   - the stream where to write
-*/
 BGD_DECLARE(void) gdImageWBMPCtx(gdImagePtr image, int fg, gdIOCtx *out)
 {
     _gdImageWBMPCtx(image, fg, out);
@@ -136,12 +125,6 @@ static int _gdImageWBMPCtx(gdImagePtr image, int fg, gdIOCtx *out)
     return 0;
 }
 
-/*
-  Function: gdImageCreateFromWBMPCtx
-
-  Reads in a WBMP image via a <gdIOCtx> struct.  See
-  <gdImageCreateFromWBMP>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromWBMPCtx(gdIOCtx *infile)
 {
     Wbmp *wbmp;
@@ -180,50 +163,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromWBMPCtx(gdIOCtx *infile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromWBMP
-
-        <gdImageCreateFromWBMP> is called to load images from WBMP format
-        files. Invoke <gdImageCreateFromWBMP> with an already opened
-        pointer to a file containing the desired
-        image. <gdImageCreateFromWBMP> returns a gdImagePtr to the new
-        image, or NULL if unable to load the image (most often because the
-        file is corrupt or does not contain a WBMP
-        image). <gdImageCreateFromWBMP> does not close the file. You can
-        inspect the sx and sy members of the image to determine its
-        size. The image must eventually be destroyed using
-        <gdImageDestroy>.
-
-  Variants:
-
-        <gdImageCreateFromWBMPPtr> creates an image from WBMP data (i.e. the
-        contents of a WBMP file) already in memory.
-
-        <gdImageCreateFromWBMPCtx> reads in an image using the functions in
-        a <gdIOCtx> struct.
-
-  Parameters:
-
-        infile - The input FILE pointer
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-  Example:
-        (start code)
-
-        gdImagePtr im;
-        FILE *in;
-        in = fopen("mywbmp.wbmp", "rb");
-        im = gdImageCreateFromWBMP(in);
-        fclose(in);
-        // ... Use the image ...
-        gdImageDestroy(im);
-
-        (end code)
-*/
-
 BGD_DECLARE(gdImagePtr) gdImageCreateFromWBMP(FILE *inFile)
 {
     gdImagePtr im;
@@ -235,16 +174,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromWBMP(FILE *inFile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromWBMPPtr
-
-  Parameters:
-
-        size - size of WBMP data in bytes.
-        data - WBMP data (i.e. contents of a WBMP file).
-
-  See <gdImageCreateFromWBMP>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromWBMPPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -257,9 +186,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromWBMPPtr(int size, void *data)
     return im;
 }
 
-/*
-        Function: gdImageWBMP
-*/
 BGD_DECLARE(void) gdImageWBMP(gdImagePtr im, int fg, FILE *outFile)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
@@ -269,9 +195,6 @@ BGD_DECLARE(void) gdImageWBMP(gdImagePtr im, int fg, FILE *outFile)
     out->gd_free(out);
 }
 
-/*
-        Function: gdImageWBMPPtr
-*/
 BGD_DECLARE(void *) gdImageWBMPPtr(gdImagePtr im, int *size, int fg)
 {
     void *rv;

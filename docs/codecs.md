@@ -157,6 +157,8 @@ typedef struct {
     unsigned int filters;          // bitmask of GD_PNG_FILTER_* constants
     int compression_strategy;      // GD_PNG_COMPRESSION_STRATEGY_*
     const gdImageMetadata *metadata;
+    unsigned int resolution_x;     // horizontal DPI, 0 = use gdImage value
+    unsigned int resolution_y;     // vertical DPI, 0 = use gdImage value
 } gdPngWriteOptions;
 ```
 
@@ -182,8 +184,13 @@ typedef struct {
     int x_pixels_per_unit, y_pixels_per_unit, physical_unit;
     gdImageMetadata *metadata;
     int decoded_truecolor;
+    int resolution_x, resolution_y;
 } gdPngInfo;
 ```
+
+`x_pixels_per_unit`, `y_pixels_per_unit`, and `physical_unit` expose the raw PNG
+`pHYs` chunk values.  `resolution_x` and `resolution_y` are converted DPI values
+when `physical_unit` is meters, or `-1` when no absolute DPI is available.
 
 ### Public API
 
@@ -215,7 +222,8 @@ for the first frame.  Transparency is set to the GIF transparency index.
 images are quantised internally by the legacy write API.
 
 **Animation read:** `gdGifRead*` API reads GIF animations frame-by-frame with
-metadata.
+metadata. `gdGifReadNextFrame` and `gdGifReadNextImage` return caller-owned
+images that must be destroyed with `gdImageDestroy`.
 
 **Animation write:** `gdImageGifAnimBegin` / `gdImageGifAnimAdd` /
 `gdImageGifAnimEnd` legacy API writes GIF frames using frame-local colour
@@ -264,7 +272,6 @@ Disposal constants: `GD_GIF_DISPOSAL_UNKNOWN` (0), `GD_GIF_DISPOSAL_NONE` (1),
 - `gdGifReadGetInfo`
 - `gdGifReadNextFrame` (raw frames)
 - `gdGifReadNextImage` (coalesced/rendered)
-- `gdGifReadCloneImage`
 - `gdGifReadClose`
 
 **Animation write** (legacy imperative API):
@@ -598,10 +605,11 @@ Alpha type:
 2. Raw (non-coalesced) — `JxlDecoderSetCoalescing(JXL_FALSE)`, each frame has
    crop offsets and blend info.  Use `gdJxlReadNextFrame` with `gdJxlFrameInfo`.
 
-**Animation write:** Canvas size is fixed at begin; all frames must be
-truecolor, match the canvas size.  `delay_ms` is in milliseconds;
-`tps_numerator=1000, tps_denominator=1` (1 tick = 1 ms).  Loop forever
-(`num_loops=0`).
+**Multi-image write:** `gdJxlWriteOptions` controls canvas size, lossless/lossy
+settings, effort, and loop count.  A zero canvas dimension is inferred from the
+first frame.  Frames must be truecolor and match the resolved canvas size.
+`delay_ms` is in milliseconds; `tps_numerator=1000, tps_denominator=1`
+(1 tick = 1 ms).  `loopCount=0` means loop forever.
 
 ### Reader info — `gdJxlInfo`
 
@@ -633,6 +641,24 @@ Blend constants:
 - `GD_JXL_BLEND_MULADD` (3)
 - `GD_JXL_BLEND_MUL` (4)
 
+### Read/write options
+
+```c
+typedef struct {
+    size_t struct_size;
+    int coalesced;
+} gdJxlReadOptions;
+
+typedef struct {
+    size_t struct_size;
+    int canvasWidth, canvasHeight;
+    int lossless;
+    float distance;
+    int effort;
+    int loopCount;
+} gdJxlWriteOptions;
+```
+
 ### Public API
 
 **Read still (truecolor)**:
@@ -644,23 +670,19 @@ Blend constants:
 - `gdImageJxlPtr` / `gdImageJxlPtrEx`
 - `gdImageJxlCtx` / `gdImageJxlCtxEx`
 
-**Animation read (coalesced)**:
-- `gdImageJxlAnimReaderCreate` / `gdImageJxlAnimReaderCreatePtr` / `gdImageJxlAnimReaderCreateCtx`
-- `gdImageJxlAnimReaderGetInfo`
-- `gdJxlReadNextImage` / `gdJxlReadNextImageEx` (returns image + optional delay_ms)
+**Multi-image read**:
+- `gdJxlReadOptionsInit`
+- `gdJxlReadOpen` / `gdJxlReadOpenCtx` / `gdJxlReadOpenPtr`
+- `gdJxlReadGetInfo`
+- `gdJxlReadNextImage` (coalesced full-canvas images)
+- `gdJxlReadNextFrame` (raw frame rectangles + `gdJxlFrameInfo`)
+- `gdJxlReadClose`
 
-**Animation read (raw)**:
-- `gdImageJxlAnimReaderCreateRaw` / `gdImageJxlAnimReaderCreateRawPtr` / `gdImageJxlAnimReaderCreateRawCtx`
-- `gdJxlReadNextFrame` (returns image + `gdJxlFrameInfo`)
-- `gdImageJxlAnimReaderDestroy`
-
-**Animation write**:
-- `gdImageJxlAnimBegin` / `gdImageJxlAnimBeginCtx` / `gdImageJxlAnimBeginPtr`
-  (parameters: `lossless`, `distance`, `effort`)
-- `gdImageJxlAnimBeginEx` / `gdImageJxlAnimBeginCtxEx` / `gdImageJxlAnimBeginPtrEx`
-  (adds `loop_count` parameter)
-- `gdImageJxlAnimAddFrame` (`delay_ms` parameter)
-- `gdImageJxlAnimEnd` / `gdImageJxlAnimEndPtr` (memory writer)
+**Multi-image write**:
+- `gdJxlWriteOptionsInit`
+- `gdJxlWriteOpen` / `gdJxlWriteOpenCtx` / `gdJxlWriteOpenPtr`
+- `gdJxlWriteAddImage`
+- `gdJxlWriteClose` / `gdJxlWritePtrFinish`
 
 ---
 

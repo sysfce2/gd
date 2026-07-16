@@ -39,6 +39,7 @@ int main(void) {
 		GD_PNG_FILTER_NONE, GD_PNG_FILTER_SUB, GD_PNG_FILTER_UP,
 		GD_PNG_FILTER_AVERAGE, GD_PNG_FILTER_PAETH, GD_PNG_FILTER_ALL};
 	gdPngWriteOptions options;
+	gdPngInfo info;
 	gdImagePtr im;
 	void *legacy;
 	void *advanced;
@@ -57,6 +58,8 @@ int main(void) {
 	gdTestAssert(options.filters == GD_PNG_FILTER_AUTO);
 	gdTestAssert(options.compression_strategy ==
 				 GD_PNG_COMPRESSION_STRATEGY_DEFAULT);
+	gdTestAssert(options.resolution_x == 0);
+	gdTestAssert(options.resolution_y == 0);
 
 	legacy = gdImagePngPtr(im, &legacy_size);
 	advanced = gdImagePngPtrWithOptions(im, &advanced_size, &options);
@@ -77,6 +80,21 @@ int main(void) {
 		gdPngWriteOptionsInit(&options);
 		options.compression_strategy = i;
 		gdTestAssert(check_ptr(im, &options));
+	}
+
+	gdPngWriteOptionsInit(&options);
+	options.resolution_x = 144;
+	options.resolution_y = 288;
+	advanced_size = 0;
+	advanced = gdImagePngPtrWithOptions(im, &advanced_size, &options);
+	gdTestAssert(advanced != NULL);
+	gdTestAssert(advanced_size > 0);
+	if (advanced != NULL) {
+		gdPngInfoInit(&info);
+		gdTestAssert(gdPngGetInfoPtr(advanced_size, advanced, &info) == 0);
+		gdTestAssert(info.resolution_x == 144);
+		gdTestAssert(info.resolution_y == 288);
+		gdFree(advanced);
 	}
 
 	ctx = gdNewDynamicCtx(2048, NULL);

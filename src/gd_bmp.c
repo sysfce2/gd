@@ -128,52 +128,11 @@ static int gdBMPPutInt(gdIOCtx *out, int w)
     return 0;
 }
 
-/*
-        Function: gdImageBmpPtr
-
-        Outputs the given image as BMP data, but using a <gdIOCtx> instead
-        of a file. See <gdImageBmp>.
-
-        This is the legacy BMP memory API. A zero <compression> value writes
-        uncompressed BMP data. A nonzero <compression> value requests legacy
-        RLE output when the automatically selected BMP bit depth supports RLE.
-        For explicit bit depth, compression, and conversion control, use
-        <gdImageBmpPtrEx>.
-
-        Parameters:
-                im			- the image to save.
-                size 		- Output: size in bytes of the result.
-                compression - whether to apply RLE or not.
-
-        Returns:
-
-                A pointer to memory containing the image data or NULL on error.
-*/
 BGD_DECLARE(void *) gdImageBmpPtr(gdImagePtr im, int *size, int compression)
 {
     return gdImageBmpPtrEx(im, size, 0, compression ? -1 : GD_BMP_COMPRESS_NONE, GD_BMP_FLAG_NONE);
 }
 
-/*
-        Function: gdImageBmpPtrEx
-
-                <gdImageBmpPtrEx> outputs the given image as BMP data in memory.
-                See <gdImageBmpEx> for the meaning of <bpp>, <compression>, and
-                <flags>.
-
-        Parameters:
-
-                im          - The image to save.
-                size        - Output: size in bytes of the returned data.
-                bpp         - Requested output bit depth, or 0 for automatic selection.
-                compression - Requested BMP compression mode.
-                flags       - BMP writer option flags.
-
-        Returns:
-
-                A pointer to memory containing the image data, or NULL on error.
-                The returned memory must be freed with <gdFree>.
-*/
 BGD_DECLARE(void *)
 gdImageBmpPtrEx(gdImagePtr im, int *size, int bpp, int compression, int flags)
 {
@@ -189,136 +148,11 @@ gdImageBmpPtrEx(gdImagePtr im, int *size, int bpp, int compression, int flags)
     return rv;
 }
 
-/*
-        Function: gdImageBmp
-
-        <gdImageBmp> outputs the specified image to the specified file in
-        BMP format. The file must be open for writing. Under MSDOS and all
-        versions of Windows, it is important to use "wb" as opposed to
-        simply "w" as the mode when opening the file, and under Unix there
-        is no penalty for doing so. <gdImageBmp> does not close the file;
-        your code must do so.
-
-        In addition, <gdImageBmp> allows to specify whether RLE compression
-        should be applied.
-
-        This is the legacy BMP file API. A zero <compression> value writes
-        uncompressed BMP data. A nonzero <compression> value requests legacy
-        RLE output when the automatically selected BMP bit depth supports RLE.
-        For explicit bit depth, compression, and conversion control, use
-        <gdImageBmpEx>.
-
-        Variants:
-
-                <gdImageBmpCtx> write via a <gdIOCtx> instead of a file handle.
-
-                <gdImageBmpPtr> store the image file to memory.
-
-        Parameters:
-
-                im			- the image to save.
-                outFile		- the output FILE* object.
-                compression - whether to apply RLE or not.
-
-        Returns:
-                nothing
-*/
 BGD_DECLARE(void) gdImageBmp(gdImagePtr im, FILE *outFile, int compression)
 {
     gdImageBmpEx(im, outFile, 0, compression ? -1 : GD_BMP_COMPRESS_NONE, GD_BMP_FLAG_NONE);
 }
 
-/*
-        Function: gdImageBmpEx
-
-                <gdImageBmpEx> outputs the specified image to the specified file in
-                BMP format. The file must be open for writing. Under MSDOS and all
-                versions of Windows, it is important to use "wb" as opposed to
-                simply "w" as the mode when opening the file, and under Unix there
-                is no penalty for doing so. <gdImageBmpEx> does not close the file;
-                your code must do so.
-
-                This extended BMP writer supports 1, 4, 8, 16, 24, and 32 bits per
-                pixel. It writes Windows BMP headers only: BITMAPINFOHEADER for most
-                outputs, BITMAPV4HEADER for 32 bpp alpha output or when
-                <GD_BMP_FLAG_FORCE_V4HDR> is set. It does not write OS/2 BMP
-                headers, 2 bpp BMPs, top-down BMPs, custom bit masks, V5 color
-                profiles, embedded JPEG/PNG BMP data, or non-standard high-depth
-                bitfield formats.
-
-        Bit depth:
-
-                Pass 0 for automatic bit depth selection. Automatic selection writes
-                truecolor images with non-opaque pixels as 32 bpp, opaque truecolor
-                images as 24 bpp, palette images with 2 or fewer colors as 1 bpp,
-                palette images with 16 or fewer colors as 4 bpp, and other palette
-                images as 8 bpp.
-
-                Explicit <bpp> values must be one of 1, 4, 8, 16, 24, or 32.
-                Indexed output at 1, 4, or 8 bpp requires a palette image with no
-                more colors than the selected bit depth can store. If the source is
-                truecolor, explicit indexed output is a lossy conversion and fails
-                unless <GD_BMP_FLAG_QUANTIZE> is set. With that flag, the writer
-                clones the image, converts the clone with <gdImageTrueColorToPalette>,
-                writes the clone, and leaves the caller's image unchanged.
-
-        Compression:
-
-                <GD_BMP_COMPRESS_NONE> writes uncompressed BMP pixels.
-                <GD_BMP_COMPRESS_RLE4> is valid only for 4 bpp output and writes
-                BI_RLE4. <GD_BMP_COMPRESS_RLE8> is valid only for 8 bpp output and
-                writes BI_RLE8. Any invalid bit depth/compression combination fails
-                before producing a valid BMP.
-
-                16 bpp and 32 bpp output use BI_BITFIELDS automatically, regardless
-                of the requested compression. 16 bpp defaults to RGB565 masks; set
-                <GD_BMP_FLAG_RGB555> to write RGB555 masks instead. 32 bpp writes
-                red, green, blue, and alpha masks and stores alpha as BMP opacity
-                (255 is opaque), converted from gd's alpha representation.
-
-                Palette alpha is not preserved in 1, 4, or 8 bpp BMP output. The
-                writer stores indexed palettes as B, G, R, reserved byte entries,
-                and writes the reserved byte as zero. Truecolor images that need
-                alpha preservation should be written as 32 bpp, either explicitly or
-                by using automatic bit depth selection on an image with non-opaque
-                pixels. If a truecolor image is quantized to indexed BMP with
-                <GD_BMP_FLAG_QUANTIZE>, alpha is not preserved in the indexed BMP.
-
-        Flags:
-
-                <GD_BMP_FLAG_NONE> selects default behavior.
-                <GD_BMP_FLAG_QUANTIZE> allows explicit lossy truecolor to indexed
-                conversion for 1, 4, or 8 bpp output.
-                <GD_BMP_FLAG_RGB555> selects RGB555 masks for 16 bpp output.
-                <GD_BMP_FLAG_FORCE_V4HDR> writes a BITMAPV4HEADER even when it is
-                not otherwise required.
-
-        Variants:
-
-                <gdImageBmpPtrEx> stores the image in RAM.
-
-                <gdImageBmpCtxEx> writes using a <gdIOCtx> struct.
-
-                <gdImageBmp>, <gdImageBmpPtr>, and <gdImageBmpCtx> are legacy
-                wrappers using automatic bit depth selection and no flags.
-
-        Parameters:
-
-                im          - The image to save.
-                outFile     - The FILE pointer to write to.
-                bpp         - Requested bit depth, or 0 for automatic selection.
-                compression - One of <GD_BMP_COMPRESS_NONE>,
-                                          <GD_BMP_COMPRESS_RLE4>, or <GD_BMP_COMPRESS_RLE8>.
-                flags       - A bitwise OR of <GD_BMP_FLAG_NONE>,
-                                          <GD_BMP_FLAG_FORCE_V4HDR>, <GD_BMP_FLAG_QUANTIZE>,
-                                          and <GD_BMP_FLAG_RGB555>.
-
-        Returns:
-
-                For <gdImageBmpEx> and <gdImageBmpCtxEx>, nothing.
-                For <gdImageBmpPtrEx>, a pointer to the image in memory, or NULL
-                on error.
-*/
 BGD_DECLARE(void)
 gdImageBmpEx(gdImagePtr im, FILE *outFile, int bpp, int compression, int flags)
 {
@@ -329,46 +163,12 @@ gdImageBmpEx(gdImagePtr im, FILE *outFile, int bpp, int compression, int flags)
     out->gd_free(out);
 }
 
-/*
-        Function: gdImageBmpCtx
-
-        Outputs the given image as BMP data, but using a <gdIOCtx> instead
-        of a file. See <gdImageBmp>.
-
-        This is the legacy BMP context API. A zero <compression> value writes
-        uncompressed BMP data. A nonzero <compression> value requests legacy
-        RLE output when the automatically selected BMP bit depth supports RLE.
-        For explicit bit depth, compression, and conversion control, use
-        <gdImageBmpCtxEx>.
-
-        Parameters:
-                im			- the image to save.
-                out 		- the <gdIOCtx> to write to.
-                compression - whether to apply RLE or not.
-*/
 BGD_DECLARE(void)
 gdImageBmpCtx(gdImagePtr im, gdIOCtxPtr out, int compression)
 {
     gdImageBmpCtxEx(im, out, 0, compression ? -1 : GD_BMP_COMPRESS_NONE, GD_BMP_FLAG_NONE);
 }
 
-/*
-        Function: gdImageBmpCtxEx
-
-                <gdImageBmpCtxEx> outputs the given image as BMP data using a
-                <gdIOCtx> structure. See <gdImageBmpEx> for the meaning of <bpp>,
-                <compression>, and <flags>, including automatic bit depth selection,
-                RLE restrictions, quantization behavior, bitfield output, and
-                unsupported BMP variants.
-
-        Parameters:
-
-                im          - The image to save.
-                out         - The <gdIOCtx> to write to.
-                bpp         - Requested output bit depth, or 0 for automatic selection.
-                compression - Requested BMP compression mode.
-                flags       - BMP writer option flags.
-*/
 BGD_DECLARE(void)
 gdImageBmpCtxEx(gdImagePtr im, gdIOCtxPtr out, int bpp, int compression, int flags)
 {
@@ -1087,9 +887,6 @@ static int build_rle_packet(unsigned char *row, int packet_type, int length, uns
     return compressed_size;
 }
 
-/*
-        Function: gdImageCreateFromBmp
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromBmp(FILE *inFile)
 {
     gdImagePtr im = 0;
@@ -1101,9 +898,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromBmp(FILE *inFile)
     return im;
 }
 
-/*
-        Function: gdImageCreateFromBmpPtr
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromBmpPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -1115,9 +909,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromBmpPtr(int size, void *data)
     return im;
 }
 
-/*
-        Function: gdImageCreateFromBmpCtx
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromBmpCtx(gdIOCtxPtr infile)
 {
     bmp_hdr_t *hdr;

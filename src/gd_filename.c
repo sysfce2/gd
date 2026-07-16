@@ -114,87 +114,12 @@ static const struct FileType *ftype(const char *filename)
     return NULL;
 } /* ftype*/
 
-/*
-  Function: gdSupportsFileType
-
-        Tests if a given file type is supported by GD.
-
-        Given the name of an image file (which does not have to exist),
-        returns 1 (i.e. TRUE) if <gdImageCreateFromFile> can read a file
-        of that type.  This is useful if you do not know which image types
-        were enabled at compile time.
-
-        If _writing_ is true, the result will be true only if
-        <gdImageFile> can write a file of this type.
-
-        Note that filename parsing is done exactly the same as is done by
-        <gdImageCreateFromFile> and <gdImageFile> and is subject to the
-        same limitations.
-
-        Assuming LibGD is compiled with support for these image types, the
-        following extensions are supported:
-
-                - .gif
-                - .gd, .gd2
-                - .wbmp
-                - .bmp
-                - .xbm
-                - .tga
-                - .png
-                - .qoi
-                - .jpg, .jpeg
-                - .heif, .heix
-                - .avif
-                - .tiff, .tif
-                - .webp
-                - .jxl
-                - .xpm
-
-        Names are parsed case-insenstively.
-
-  Parameters:
-
-        filename    - Filename with tested extension.
-        writing     - Flag: true tests if writing works
-
-  Returns:
-
-        GD_TRUE (1) if the file type is supported, GD_FALSE (0) if not.
-
-*/
 BGD_DECLARE(int)
 gdSupportsFileType(const char *filename, int writing)
 {
     const struct FileType *entry = ftype(filename);
     return !!entry && (!writing || !!entry->writer);
 } /* gdSupportsFileType*/
-
-/*
-  Function: gdImageCreateFromFile
-
-        Read an image file of any supported.
-
-        Given the path to a file, <gdImageCreateFromFile> will open the
-        file, read its contents with the appropriate _gdImageCreateFrom*_
-        function and return it.
-
-        File type is determined by the filename extension, so having an
-        incorrect extension will probably not work.  For example, renaming
-        PNG image "foo.png" to "foo.gif" and then attempting to load it
-        will fail even if GD supports both formats.  See
-        <gdSupportsFiletype> for more details.
-
-        NULL is returned on error.
-
-  Parameters:
-
-        filename    - the input file name
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-*/
 
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromFile(const char *filename)
@@ -220,40 +145,6 @@ gdImageCreateFromFile(const char *filename)
 
     return result;
 } /* gdImageCreateFromFile*/
-
-/*
-  Function: gdImageFile
-
-        Writes an image to a file in the format indicated by the filename.
-
-        File type is determined by the extension of the file name.  See
-        <gdSupportsFiletype> for an overview of the parsing.
-
-        For file types that require extra arguments, <gdImageFile>
-        attempts to use sane defaults:
-
-        <gdImageGd2>    - chunk size = 0, compression is enabled.
-        <gdImageJpeg>   - quality = -1 (i.e. the reasonable default)
-        <gdImageWBMP>   - foreground is the darkest available color
-
-        Everything else is called with the two-argument function and so
-        will use the default values.
-
-        <gdImageFile> has some rudimentary error detection and will return
-        GD_FALSE (0) if a detectable error occurred.  However, the image
-        loaders do not normally return their error status so a result of
-        GD_TRUE (1) does **not** mean the file was saved successfully.
-
-  Parameters:
-
-        im          - The image to save.
-        filename    - The path to the file to which the image is saved.
-
-  Returns:
-
-        GD_FALSE (0) if an error was detected, GD_TRUE (1) if not.
-
-*/
 
 BGD_DECLARE(int)
 gdImageFile(gdImagePtr im, const char *filename)

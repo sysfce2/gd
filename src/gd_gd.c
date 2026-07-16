@@ -191,49 +191,6 @@ fail1:
     return 0;
 }
 
-/*
-  Function: gdImageCreateFromGd
-
-        <gdImageCreateFromGd> is called to load images from gd format
-        files. Invoke <gdImageCreateFromGd> with an already opened pointer
-        to a file containing the desired image in the gd file format,
-        which is specific to gd and intended for very fast loading. (It is
-        not intended for compression; for compression, use PNG or JPEG.)
-
-        <gdImageCreateFromGd> returns a <gdImagePtr> to the new image, or
-        NULL if unable to load the image (most often because the file is
-        corrupt or does not contain a gd format
-        image). <gdImageCreateFromGd> does not close the file. You can
-        inspect the sx and sy members of the image to determine its
-        size. The image must eventually be destroyed using
-        <gdImageDestroy>.
-
-  Variants:
-
-        <gdImageCreateFromGdPtr> creates an image from GD data (i.e. the
-        contents of a GD file) already in memory.
-
-        <gdImageCreateFromGdCtx> reads in an image using the functions in
-        a <gdIOCtx> struct.
-
-  Parameters:
-
-        infile - The input FILE pointer
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-  Example:
-
-        > gdImagePtr im;
-        > FILE *in;
-        > in = fopen("mygd.gd", "rb");
-        > im = gdImageCreateFromGd(in);
-        > fclose(in);
-        > // ... Use the image ...
-        > gdImageDestroy(im);
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromGd(FILE *inFile)
 {
     gdImagePtr im;
@@ -249,16 +206,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromGd(FILE *inFile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromGdPtr
-
-  Parameters:
-
-        size - size of GD data in bytes.
-        data - GD data (i.e. contents of a GIF file).
-
-  Reads in GD data from memory. See <gdImageCreateFromGd>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromGdPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -271,12 +218,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromGdPtr(int size, void *data)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromGdCtx
-
-  Reads in a GD image via a <gdIOCtx> struct.  See
-  <gdImageCreateFromGd>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromGdCtx(gdIOCtxPtr in)
 {
     int sx, sy;
@@ -378,9 +319,6 @@ static void _gdImageGd(gdImagePtr im, gdIOCtx *out)
     }
 }
 
-/*
-        Function: gdImageGd
- */
 BGD_DECLARE(void) gdImageGd(gdImagePtr im, FILE *outFile)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
@@ -390,9 +328,6 @@ BGD_DECLARE(void) gdImageGd(gdImagePtr im, FILE *outFile)
     out->gd_free(out);
 }
 
-/*
-        Function: gdImageGdPtr
- */
 BGD_DECLARE(void *) gdImageGdPtr(gdImagePtr im, int *size)
 {
     void *rv;

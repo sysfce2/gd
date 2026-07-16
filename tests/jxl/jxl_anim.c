@@ -4,7 +4,8 @@
 
 int main() {
 	gdImagePtr red, blue, frame;
-	gdJxlAnimReaderPtr reader;
+	gdJxlReadPtr reader;
+	gdJxlInfo info;
 	void *data;
 	int size = 0;
 	int delay = -1;
@@ -14,30 +15,33 @@ int main() {
 	if (!gdTestAssert(red != NULL) || !gdTestAssert(blue != NULL))
 		goto cleanup_images;
 
-	data = jxlTestEncodeAnimation(red, 120, blue, 80, 0, &size);
+	data = jxlTestEncodeAnimationWithLoop(red, 120, blue, 80, 0, 3, &size);
 	if (!gdTestAssert(data != NULL) || !gdTestAssert(size > 0))
 		goto cleanup_images;
 
-	reader = gdImageJxlAnimReaderCreatePtr(size, data);
+	reader = gdJxlReadOpenPtr(size, data, NULL);
 	if (!gdTestAssert(reader != NULL))
 		goto cleanup_data;
 
-	frame = gdJxlReadNextImage(reader, &delay);
+	gdTestAssert(gdJxlReadGetInfo(reader, &info));
+	gdTestAssert(info.loop_count == 3);
+
+	gdTestAssert(gdJxlReadNextImage(reader, &delay, &frame) == 1);
 	gdTestAssert(frame != NULL);
 	gdTestAssert(delay == 120);
 	gdTestAssert(gdImageSX(frame) == 4);
 	gdTestAssert(gdImageSY(frame) == 4);
 	gdImageDestroy(frame);
 
-	frame = gdJxlReadNextImage(reader, &delay);
+	gdTestAssert(gdJxlReadNextImage(reader, &delay, &frame) == 1);
 	gdTestAssert(frame != NULL);
 	gdTestAssert(delay == 80);
 	gdImageDestroy(frame);
 
-	frame = gdJxlReadNextImage(reader, &delay);
+	gdTestAssert(gdJxlReadNextImage(reader, &delay, &frame) == 0);
 	gdTestAssert(frame == NULL);
 
-	gdImageJxlAnimReaderDestroy(reader);
+	gdJxlReadClose(reader);
 cleanup_data:
 	gdFree(data);
 cleanup_images:

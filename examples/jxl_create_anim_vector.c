@@ -194,7 +194,8 @@ static gdImagePtr make_frame(int frame)
 int main(int argc, char **argv)
 {
     FILE *output;
-    gdJxlAnimPtr animation;
+    gdJxlWriteOptions options;
+    gdJxlWritePtr writer;
     int lossless;
     float distance;
     int i;
@@ -212,8 +213,16 @@ int main(int argc, char **argv)
         fprintf(stderr, "cannot create %s\n", argv[1]);
         return 1;
     }
-    animation = gdImageJxlAnimBegin(output, WIDTH, HEIGHT, lossless, distance, 7);
-    if (!animation) {
+
+    gdJxlWriteOptionsInit(&options);
+    options.canvasWidth = WIDTH;
+    options.canvasHeight = HEIGHT;
+    options.lossless = lossless;
+    options.distance = distance;
+    options.effort = 7;
+
+    writer = gdJxlWriteOpen(output, &options);
+    if (!writer) {
         fprintf(stderr, "cannot create JXL animation writer\n");
         fclose(output);
         return 1;
@@ -221,10 +230,10 @@ int main(int argc, char **argv)
 
     for (i = 0; i < FRAMES; i++) {
         gdImagePtr frame = make_frame(i);
-        if (!frame || !gdImageJxlAnimAddFrame(animation, frame, 40)) {
+        if (!frame || !gdJxlWriteAddImage(writer, frame, 40)) {
             fprintf(stderr, "cannot create or add frame %d\n", i);
             gdImageDestroy(frame);
-            gdImageJxlAnimEnd(animation);
+            gdJxlWriteClose(writer);
             fclose(output);
             return 1;
         }
@@ -232,11 +241,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "\rframe %d/%d", i + 1, FRAMES);
     }
     fprintf(stderr, "\n");
-    if (!gdImageJxlAnimEnd(animation)) {
-        fprintf(stderr, "cannot finalize JXL animation\n");
-        fclose(output);
-        return 1;
-    }
+    gdJxlWriteClose(writer);
     fclose(output);
     printf("wrote %s: %d Vector2D frames, %dx%d, %s distance=%.2f\n", argv[1], FRAMES, WIDTH,
            HEIGHT, lossless ? "lossless" : "lossy", distance);

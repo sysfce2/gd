@@ -514,16 +514,6 @@ static void tiffWriter(gdImagePtr image, gdIOCtx *out, int bitDepth)
     }
 }
 
-/*
-        Function: gdImageTiffCtx
-
-        Write the gd image as a tiff file.
-
-        Parameters:
-
-                image - gd image structure;
-                out   - the stream where to write
-*/
 BGD_DECLARE(void) gdImageTiffCtx(gdImagePtr image, gdIOCtx *out)
 {
     int clipx1P, clipy1P, clipx2P, clipy2P;
@@ -898,11 +888,6 @@ static int createFromTiffRgba(TIFF *tif, gdImagePtr im)
     return success;
 }
 
-/*
-        Function: gdImageCreateFromTiffCtx
-
-        Create a gdImage from a TIFF file input from an gdIOCtx.
-*/
 static gdImagePtr TiffDecodeCurrentDirectory(TIFF *tif)
 {
     uint16_t bps, spp, photometric;
@@ -1138,9 +1123,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffCtx(gdIOCtx *infile)
     return gdImageCreateFromTiffCtxEx(infile, tiff_ctx_size(infile));
 }
 
-/*
-        Function: gdImageCreateFromTIFF
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromTiff(FILE *inFile)
 {
     gdImagePtr im;
@@ -1154,9 +1136,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiff(FILE *inFile)
     return im;
 }
 
-/*
-        Function: gdImageCreateFromTiffPtr
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -1168,9 +1147,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffPtr(int size, void *data)
     return im;
 }
 
-/*
-        Function: gdImageTiff
-*/
 BGD_DECLARE(void) gdImageTiff(gdImagePtr im, FILE *outFile)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
@@ -1180,9 +1156,6 @@ BGD_DECLARE(void) gdImageTiff(gdImagePtr im, FILE *outFile)
     out->gd_free(out);
 }
 
-/*
-        Function: gdImageTiffPtr
-*/
 BGD_DECLARE(void *) gdImageTiffPtr(gdImagePtr im, int *size)
 {
     void *rv;

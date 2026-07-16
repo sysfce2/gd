@@ -11,6 +11,7 @@ libgd_test_programs += \
 	jxl/jxl_alpha \
 	jxl/jxl_read_file \
 	jxl/jxl_palette \
+	jxl/jxl_api_symbols \
 	jxl/jxl_anim \
 	jxl/jxl_anim_lossless \
 	jxl/jxl_anim_raw \
@@ -21,6 +22,7 @@ EXTRA_DIST += \
 	jxl/CMakeLists.txt \
 	jxl/Makemodule.am \
 	jxl/jxl_test_helpers.h \
+	jxl/jxl_api_symbols.c \
 	jxl/generate_test_images.sh \
 	jxl/basic.jxl \
 	jxl/3x3_srgb_lossless.jxl \

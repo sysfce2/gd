@@ -4,7 +4,8 @@
 
 int main() {
 	gdImagePtr red, blue, frame;
-	gdJxlAnimReaderPtr reader;
+	gdJxlReadOptions options;
+	gdJxlReadPtr reader;
 	gdJxlFrameInfo info;
 	void *data;
 	int size = 0;
@@ -18,11 +19,13 @@ int main() {
 	if (!gdTestAssert(data != NULL) || !gdTestAssert(size > 0))
 		goto cleanup_images;
 
-	reader = gdImageJxlAnimReaderCreateRawPtr(size, data);
+	gdJxlReadOptionsInit(&options);
+	options.coalesced = 0;
+	reader = gdJxlReadOpenPtr(size, data, &options);
 	if (!gdTestAssert(reader != NULL))
 		goto cleanup_data;
 
-	frame = gdJxlReadNextFrame(reader, &info);
+	gdTestAssert(gdJxlReadNextFrame(reader, &info, &frame) == 1);
 	gdTestAssert(frame != NULL);
 	gdTestAssert(info.delay_ms == 120);
 	gdTestAssert(info.width == 4);
@@ -30,14 +33,14 @@ int main() {
 	gdTestAssert(info.blend_mode == GD_JXL_BLEND_REPLACE);
 	gdImageDestroy(frame);
 
-	frame = gdJxlReadNextFrame(reader, &info);
+	gdTestAssert(gdJxlReadNextFrame(reader, &info, &frame) == 1);
 	gdTestAssert(frame != NULL);
 	gdTestAssert(info.delay_ms == 80);
 	gdTestAssert(info.width == 4);
 	gdTestAssert(info.height == 4);
 	gdImageDestroy(frame);
 
-	gdImageJxlAnimReaderDestroy(reader);
+	gdJxlReadClose(reader);
 cleanup_data:
 	gdFree(data);
 cleanup_images:

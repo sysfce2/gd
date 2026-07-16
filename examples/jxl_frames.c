@@ -26,10 +26,11 @@ static int write_png(gdImagePtr im, const char *prefix, int frame)
 int main(int argc, char **argv)
 {
     FILE *in;
-    gdJxlAnimReaderPtr reader;
-    gdImagePtr image;
+    gdJxlReadPtr reader;
+    gdImagePtr image = NULL;
     int frame = 0;
     int delay_ms = 0;
+    int result;
 
     if (argc != 3) {
         fprintf(stderr, "Usage: %s input.jxl output-prefix\n", argv[0]);
@@ -42,26 +43,30 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    reader = gdImageJxlAnimReaderCreate(in);
+    reader = gdJxlReadOpen(in, NULL);
     fclose(in);
     if (reader == NULL) {
         fprintf(stderr, "cannot create JXL animation reader\n");
         return 1;
     }
 
-    while ((image = gdJxlReadNextImage(reader, &delay_ms)) != NULL) {
+    while ((result = gdJxlReadNextImage(reader, &delay_ms, &image)) == 1) {
         printf("frame %d: %dx%d duration=%dms\n", frame, gdImageSX(image), gdImageSY(image),
                delay_ms);
         if (!write_png(image, argv[2], frame)) {
             gdImageDestroy(image);
-            gdImageJxlAnimReaderDestroy(reader);
+            gdJxlReadClose(reader);
             return 1;
         }
         gdImageDestroy(image);
         frame++;
     }
 
-    gdImageJxlAnimReaderDestroy(reader);
+    gdJxlReadClose(reader);
+    if (result < 0) {
+        fprintf(stderr, "error while reading JXL frames\n");
+        return 1;
+    }
     printf("frames written: %d\n", frame);
     return 0;
 }

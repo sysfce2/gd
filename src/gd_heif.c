@@ -50,34 +50,6 @@ BGD_DECLARE(void) gdHeifWriteOptionsInit(gdHeifWriteOptions *options)
     options->chroma = GD_HEIF_CHROMA_444;
 }
 
-/*
-  Function: gdImageCreateFromHeif
-
-        <gdImageCreateFromHeif> is called to load truecolor images from
-        HEIF format files. Invoke <gdImageCreateFromHeif> with an
-        already opened pointer to a file containing the desired
-        image. <gdImageCreateFromHeif> returns a <gdImagePtr> to the new
-        truecolor image, or NULL if unable to load the image (most often
-        because the file is corrupt or does not contain a HEIF
-        image). <gdImageCreateFromHeif> does not close the file.
-
-        You can inspect the sx and sy members of the image to determine
-        its size. The image must eventually be destroyed using
-        <gdImageDestroy>.
-
-        *The returned image is always a truecolor image.*
-
-  Parameters:
-
-        infile - The input FILE pointer.
-
-  Returns:
-
-        A pointer to the new *truecolor* image.  This will need to be
-        destroyed with <gdImageDestroy> once it is no longer needed.
-
-        On error, returns NULL.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile)
 {
     gdImagePtr im;
@@ -91,16 +63,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromHeifPtr
-
-        See <gdImageCreateFromHeif>.
-
-  Parameters:
-
-        size            - size of HEIF data in bytes.
-        data            - pointer to HEIF data.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data)
 {
     return gdImageCreateFromHeifPtrWithOptions(size, data, NULL);
@@ -273,11 +235,6 @@ static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expec
     return im;
 }
 
-/*
-  Function: gdImageCreateFromHeifCtx
-
-        See <gdImageCreateFromHeif>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifCtx(gdIOCtx *infile)
 {
     return _gdImageCreateFromHeifCtx(infile, GD_HEIF_BRAND_AVIF | GD_HEIF_BRAND_MIF1 |
@@ -475,24 +432,6 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, const gdHeifWriteOpt
     return GD_TRUE;
 }
 
-/*
-  Function: gdImageHeifCtx
-
-        Write the image as HEIF data via a <gdIOCtx>. See <gdImageHeifEx>
-        for more details.
-
-  Parameters:
-
-        im          - The image to write.
-        outfile     - The output sink.
-        quality     - Image quality.
-        codec       - The output coding format.
-        chroma      - The output chroma subsampling format.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void)
 gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifCodec codec, gdHeifChroma chroma)
 {
@@ -506,45 +445,6 @@ gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifCodec codec, 
     _gdImageHeifCtx(im, outfile, &options);
 }
 
-/*
-  Function: gdImageHeifEx
-
-        <gdImageHeifEx> outputs the specified image to the specified file in
-        HEIF format. The file must be open for writing. Under MSDOS and
-        all versions of Windows, it is important to use "wb" as opposed to
-        simply "w" as the mode when opening the file, and under Unix there
-        is no penalty for doing so. <gdImageHeifEx> does not close the file;
-        your code must do so.
-
-        If _quality_ is -1, a reasonable quality value (which should yield a
-        good general quality / size tradeoff for most situations) is used. Otherwise
-        _quality_ should be a value in the range 0-100, higher quality values
-        usually implying both higher quality and larger image sizes or 200, for
-        lossless codec.
-
-        For _codec_, the default and most widely supported option is
-        GD_HEIF_CODEC_HEVC. GD_HEIF_CODEC_AV1 is a newer codec that may not be
-        supported by all decoders but can offer better compression efficiency.
-        They must be installed on the system and enabled at compile time to be used.
-
-  Variants:
-
-        <gdImageHeifCtx> stores the image using a <gdIOCtx> struct.
-
-        <gdImageHeifPtrEx> stores the image to RAM.
-
-  Parameters:
-
-        im          - The image to save.
-        outFile     - The FILE pointer to write to.
-        quality     - Codec quality (0-100).
-        codec       - The output coding format.
-        chroma      - The output chroma subsampling format.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void)
 gdImageHeifEx(gdImagePtr im, FILE *outFile, int quality, gdHeifCodec codec, gdHeifChroma chroma)
 {
@@ -563,22 +463,6 @@ gdImageHeifEx(gdImagePtr im, FILE *outFile, int quality, gdHeifCodec codec, gdHe
     out->gd_free(out);
 }
 
-/*
-  Function: gdImageHeif
-
-        Variant of <gdImageHeifEx> which uses the default quality (-1), the
-        default codec (GD_HEIF_Codec_HEVC) and the default chroma
-        subsampling (GD_HEIF_CHROMA_444).
-
-  Parameters:
-
-        im      - The image to save
-        outFile - The FILE pointer to write to.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void) gdImageHeif(gdImagePtr im, FILE *outFile)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
@@ -592,11 +476,6 @@ BGD_DECLARE(void) gdImageHeif(gdImagePtr im, FILE *outFile)
     out->gd_free(out);
 }
 
-/*
-  Function: gdImageHeifPtr
-
-        See <gdImageHeifEx>.
-*/
 BGD_DECLARE(void *) gdImageHeifPtr(gdImagePtr im, int *size)
 {
     gdHeifWriteOptions options;
@@ -623,11 +502,6 @@ gdImageHeifPtrWithOptions(gdImagePtr im, int *size, const gdHeifWriteOptions *op
     return rv;
 }
 
-/*
-  Function: gdImageHeifPtrEx
-
-        See <gdImageHeifEx>.
-*/
 BGD_DECLARE(void *)
 gdImageHeifPtrEx(gdImagePtr im, int *size, int quality, gdHeifCodec codec, gdHeifChroma chroma)
 {

@@ -34,9 +34,10 @@ static unsigned char *read_file(FILE *fp, int *size) {
 
 static void assert_valid_file(const char *directory, const char *filename) {
 	unsigned char *data;
-	gdJxlAnimReaderPtr reader;
+	gdJxlReadPtr reader;
 	gdImagePtr image;
 	int delay;
+	int result;
 	int frames = 0;
 	int size;
 	FILE *fp;
@@ -63,11 +64,11 @@ static void assert_valid_file(const char *directory, const char *filename) {
 		gdImageDestroy(image);
 	}
 
-	reader = gdImageJxlAnimReaderCreatePtr(size, data);
+	reader = gdJxlReadOpenPtr(size, data, NULL);
 	gdTestAssertMsg(reader != NULL,
 					"animation reader rejected valid JXL: %s\n", filename);
 	if (reader != NULL) {
-		while ((image = gdJxlReadNextImage(reader, &delay)) != NULL) {
+		while ((result = gdJxlReadNextImage(reader, &delay, &image)) == 1) {
 			gdTestAssertMsg(gdImageSX(image) > 0 && gdImageSY(image) > 0,
 							"JXL frame has invalid dimensions: %s\n", filename);
 			gdTestAssertMsg(delay >= 0,
@@ -75,9 +76,10 @@ static void assert_valid_file(const char *directory, const char *filename) {
 			frames++;
 			gdImageDestroy(image);
 		}
+		gdTestAssertMsg(result == 0, "JXL frame iteration failed: %s\n", filename);
 		gdTestAssertMsg(frames > 0, "valid JXL yielded no frames: %s\n",
 						filename);
-		gdImageJxlAnimReaderDestroy(reader);
+		gdJxlReadClose(reader);
 	}
 
 	free(data);
@@ -85,7 +87,7 @@ static void assert_valid_file(const char *directory, const char *filename) {
 
 static void assert_invalid_file(const char *directory, const char *filename) {
 	unsigned char *data;
-	gdJxlAnimReaderPtr reader;
+	gdJxlReadPtr reader;
 	gdImagePtr image;
 	int delay = -1;
 	int size;
@@ -112,15 +114,15 @@ static void assert_invalid_file(const char *directory, const char *filename) {
 		gdImageDestroy(image);
 	}
 
-	reader = gdImageJxlAnimReaderCreatePtr(size, data);
+	reader = gdJxlReadOpenPtr(size, data, NULL);
 	if (reader != NULL) {
-		image = gdJxlReadNextImage(reader, &delay);
+		gdTestAssert(gdJxlReadNextImage(reader, &delay, &image) != 1);
 		gdTestAssertMsg(image == NULL,
 						"invalid JXL animation yielded a frame: %s\n", filename);
 		if (image != NULL) {
 			gdImageDestroy(image);
 		}
-		gdImageJxlAnimReaderDestroy(reader);
+		gdJxlReadClose(reader);
 	}
 
 	free(data);

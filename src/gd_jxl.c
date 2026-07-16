@@ -566,12 +566,13 @@ gdImageJxlCtxEx(gdImagePtr im, gdIOCtxPtr outfile, int lossless, float distance,
     _gdImageJxlCtxEx(im, outfile, lossless, distance, effort);
 }
 
-/* ---- Animation structures ---- */
+/* ---- Multi-image structures ---- */
 
-typedef struct gdJxlAnim {
+typedef struct gdJxlWrite {
     JxlEncoder *enc;
     JxlEncoderFrameSettings *frame_opts;
     gdIOCtxPtr ctx;
+    gdJxlWriteOptions options;
     uint32_t width;
     uint32_t height;
     int has_alpha;
@@ -579,9 +580,10 @@ typedef struct gdJxlAnim {
     int memoryWriter;
     int finalized;
     int timestamp;
-} gdJxlAnim;
+    int frameCount;
+} gdJxlWrite;
 
-typedef struct gdJxlAnimReader {
+typedef struct gdJxlRead {
     JxlDecoder *dec;
     uint8_t *buf;
     size_t buf_len;
@@ -589,22 +591,43 @@ typedef struct gdJxlAnimReader {
     int coalesced;
     int done;
     int last_frame_seen;
-} gdJxlAnimReader;
+} gdJxlRead;
+
+BGD_DECLARE(void) gdJxlReadOptionsInit(gdJxlReadOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = sizeof(*options);
+    options->coalesced = 1;
+}
+
+BGD_DECLARE(void) gdJxlWriteOptionsInit(gdJxlWriteOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = sizeof(*options);
+    options->distance = 1.0f;
+    options->effort = 7;
+}
 
 /* ---- Animation write ---- */
 
-static int JxlAnimDrainEncoder(gdJxlAnim *anim)
+static int JxlWriteDrainEncoder(gdJxlWrite *writer)
 {
     uint8_t outbuf[65536];
     for (;;) {
         uint8_t *next_out = outbuf;
         size_t avail = sizeof(outbuf);
-        JxlEncoderStatus st = JxlEncoderProcessOutput(anim->enc, &next_out, &avail);
+        JxlEncoderStatus st = JxlEncoderProcessOutput(writer->enc, &next_out, &avail);
 
         size_t written = sizeof(outbuf) - avail;
         if (written > 0) {
-            if (gdPutBuf(outbuf, (int)written, anim->ctx) != (int)written) {
-                gd_error("gdImageJxlAnim: write error");
+            if (gdPutBuf(outbuf, (int)written, writer->ctx) != (int)written) {
+                gd_error("gd-jxl write: write error");
                 return 0;
             }
         }
@@ -613,60 +636,65 @@ static int JxlAnimDrainEncoder(gdJxlAnim *anim)
             return 1;
         }
         if (st != JXL_ENC_NEED_MORE_OUTPUT) {
-            gd_error("gdImageJxlAnim: encoder error");
+            gd_error("gd-jxl write: encoder error");
             return 0;
         }
     }
 }
 
-BGD_DECLARE(gdJxlAnimPtr)
-gdImageJxlAnimBegin(FILE *outFile, int width, int height, int lossless, float distance, int effort)
+static int JxlWriteNormalizeOptions(const gdJxlWriteOptions *options, gdJxlWriteOptions *normalized)
 {
-    gdIOCtx *out = gdNewFileCtx(outFile);
-    if (out == NULL) {
-        return NULL;
+    gdJxlWriteOptions defaults;
+
+    gdJxlWriteOptionsInit(&defaults);
+    *normalized = defaults;
+    if (options == NULL) {
+        return 1;
     }
-    gdJxlAnimPtr anim = gdImageJxlAnimBeginCtx(out, width, height, lossless, distance, effort);
-    if (anim) {
-        anim->ownsCtx = 1;
-    } else {
-        out->gd_free(out);
+    if (options->struct_size < sizeof(gdJxlWriteOptions)) {
+        gd_error("gd-jxl write: invalid options structure size");
+        return 0;
     }
-    return anim;
+    *normalized = *options;
+    if (normalized->effort == 0) {
+        normalized->effort = defaults.effort;
+    }
+    if (normalized->distance == 0.0f && !normalized->lossless) {
+        normalized->distance = defaults.distance;
+    }
+    return 1;
 }
 
-BGD_DECLARE(gdJxlAnimPtr)
-gdImageJxlAnimBeginCtx(gdIOCtxPtr outCtx, int width, int height, int lossless, float distance,
-                       int effort)
+static int JxlWriteEnsureEncoder(gdJxlWrite *writer, gdImagePtr image)
 {
-    gdJxlAnimPtr anim;
     JxlBasicInfo info;
+    int width, height;
+    const gdJxlWriteOptions *options;
 
-    if (outCtx == NULL || width <= 0 || height <= 0) {
-        return NULL;
+    if (writer == NULL || image == NULL || writer->ctx == NULL) {
+        return 0;
+    }
+    if (writer->enc != NULL) {
+        return 1;
     }
 
-    anim = (gdJxlAnimPtr)gdCalloc(1, sizeof(struct gdJxlAnim));
-    if (anim == NULL) {
-        return NULL;
+    options = &writer->options;
+    width = options->canvasWidth > 0 ? options->canvasWidth : gdImageSX(image);
+    height = options->canvasHeight > 0 ? options->canvasHeight : gdImageSY(image);
+    if (width <= 0 || height <= 0) {
+        gd_error("gd-jxl write: invalid canvas size");
+        return 0;
     }
 
-    anim->enc = JxlEncoderCreate(NULL);
-    if (anim->enc == NULL) {
-        gd_error("gdImageJxlAnimBegin: JxlEncoderCreate failed");
-        gdFree(anim);
-        return NULL;
+    writer->enc = JxlEncoderCreate(NULL);
+    if (writer->enc == NULL) {
+        gd_error("gd-jxl write: JxlEncoderCreate failed");
+        return 0;
     }
 
-    anim->ctx = outCtx;
-    anim->width = width;
-    anim->height = height;
-    anim->ownsCtx = 0;
-    anim->memoryWriter = 0;
-    anim->finalized = 0;
-    anim->timestamp = 0;
+    writer->width = width;
+    writer->height = height;
 
-    /* Set basic info for animation */
     JxlEncoderInitBasicInfo(&info);
     info.xsize = width;
     info.ysize = height;
@@ -677,91 +705,117 @@ gdImageJxlAnimBeginCtx(gdIOCtxPtr outCtx, int width, int height, int lossless, f
     info.alpha_bits = 8;
     info.alpha_exponent_bits = 0;
     info.alpha_premultiplied = JXL_FALSE;
-    info.uses_original_profile = lossless ? JXL_TRUE : JXL_FALSE;
+    info.uses_original_profile = options->lossless ? JXL_TRUE : JXL_FALSE;
     info.have_animation = JXL_TRUE;
     info.animation.tps_numerator = 1000; /* ms == ticks */
     info.animation.tps_denominator = 1;
-    info.animation.num_loops = 0; /* loop forever */
+    info.animation.num_loops = (uint32_t)options->loopCount;
 
-    if (JxlEncoderSetBasicInfo(anim->enc, &info) != JXL_ENC_SUCCESS) {
-        gd_error("gdImageJxlAnimBegin: JxlEncoderSetBasicInfo failed");
-        JxlEncoderDestroy(anim->enc);
-        gdFree(anim);
-        return NULL;
+    if (JxlEncoderSetBasicInfo(writer->enc, &info) != JXL_ENC_SUCCESS) {
+        gd_error("gd-jxl write: JxlEncoderSetBasicInfo failed");
+        goto fail;
     }
 
-    /* Set color encoding (sRGB) */
     JxlColorEncoding srgb_enc;
     JxlColorEncodingSetToSRGB(&srgb_enc, JXL_FALSE);
-    if (JxlEncoderSetColorEncoding(anim->enc, &srgb_enc) != JXL_ENC_SUCCESS) {
-        gd_error("gdImageJxlAnimBegin: JxlEncoderSetColorEncoding failed");
-        JxlEncoderDestroy(anim->enc);
-        gdFree(anim);
-        return NULL;
+    if (JxlEncoderSetColorEncoding(writer->enc, &srgb_enc) != JXL_ENC_SUCCESS) {
+        gd_error("gd-jxl write: JxlEncoderSetColorEncoding failed");
+        goto fail;
     }
 
-    /* Create frame settings once, reuse for all frames */
-    anim->frame_opts = JxlEncoderFrameSettingsCreate(anim->enc, NULL);
-    if (anim->frame_opts == NULL) {
-        gd_error("gdImageJxlAnimBegin: JxlEncoderFrameSettingsCreate failed");
-        JxlEncoderDestroy(anim->enc);
-        gdFree(anim);
-        return NULL;
+    writer->frame_opts = JxlEncoderFrameSettingsCreate(writer->enc, NULL);
+    if (writer->frame_opts == NULL) {
+        gd_error("gd-jxl write: JxlEncoderFrameSettingsCreate failed");
+        goto fail;
     }
 
-    if (lossless) {
-        if (JxlEncoderSetFrameLossless(anim->frame_opts, JXL_TRUE) != JXL_ENC_SUCCESS) {
-            gd_error("gdImageJxlAnimBegin: JxlEncoderSetFrameLossless failed");
-            goto anim_begin_fail;
+    if (options->lossless) {
+        if (JxlEncoderSetFrameLossless(writer->frame_opts, JXL_TRUE) != JXL_ENC_SUCCESS) {
+            gd_error("gd-jxl write: JxlEncoderSetFrameLossless failed");
+            goto fail;
         }
     } else {
-        if (JxlEncoderSetFrameDistance(anim->frame_opts, distance) != JXL_ENC_SUCCESS) {
-            gd_error("gdImageJxlAnimBegin: JxlEncoderSetFrameDistance failed");
-            goto anim_begin_fail;
+        if (JxlEncoderSetFrameDistance(writer->frame_opts, options->distance) != JXL_ENC_SUCCESS) {
+            gd_error("gd-jxl write: JxlEncoderSetFrameDistance failed");
+            goto fail;
         }
     }
 
-    if (JxlEncoderFrameSettingsSetOption(anim->frame_opts, JXL_ENC_FRAME_SETTING_EFFORT, effort) !=
-        JXL_ENC_SUCCESS) {
-        gd_error("gdImageJxlAnimBegin: JxlEncoderFrameSettingsSetOption effort "
-                 "failed");
-        goto anim_begin_fail;
+    if (JxlEncoderFrameSettingsSetOption(writer->frame_opts, JXL_ENC_FRAME_SETTING_EFFORT,
+                                         options->effort) != JXL_ENC_SUCCESS) {
+        gd_error("gd-jxl write: JxlEncoderFrameSettingsSetOption effort failed");
+        goto fail;
     }
 
-    return anim;
+    return 1;
 
-anim_begin_fail:
-    // anim->frame_opts is owned by anim->enc, so no separate destroy needed
-    if (anim->enc)
-        JxlEncoderDestroy(anim->enc);
-    gdFree(anim);
-    return NULL;
+fail:
+    if (writer->enc) {
+        JxlEncoderDestroy(writer->enc);
+    }
+    writer->enc = NULL;
+    writer->frame_opts = NULL;
+    return 0;
 }
 
-BGD_DECLARE(gdJxlAnimPtr)
-gdImageJxlAnimBeginPtr(int width, int height, int lossless, float distance, int effort)
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpen(FILE *outFile, const gdJxlWriteOptions *options)
 {
     gdIOCtx *out;
-    gdJxlAnimPtr anim;
+    gdJxlWritePtr writer;
+
+    if (outFile == NULL) {
+        return NULL;
+    }
+    out = gdNewFileCtx(outFile);
+    if (out == NULL) {
+        return NULL;
+    }
+    writer = gdJxlWriteOpenCtx(out, options);
+    if (writer == NULL) {
+        out->gd_free(out);
+        return NULL;
+    }
+    writer->ownsCtx = 1;
+    return writer;
+}
+
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenCtx(gdIOCtxPtr outCtx, const gdJxlWriteOptions *options)
+{
+    gdJxlWriteOptions normalized;
+    gdJxlWritePtr writer;
+
+    if (outCtx == NULL || !JxlWriteNormalizeOptions(options, &normalized)) {
+        return NULL;
+    }
+    writer = (gdJxlWritePtr)gdCalloc(1, sizeof(struct gdJxlWrite));
+    if (writer == NULL) {
+        return NULL;
+    }
+    writer->ctx = outCtx;
+    writer->options = normalized;
+    return writer;
+}
+
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenPtr(const gdJxlWriteOptions *options)
+{
+    gdIOCtx *out;
+    gdJxlWritePtr writer;
 
     out = gdNewDynamicCtx(2048, NULL);
     if (out == NULL) {
         return NULL;
     }
-
-    anim = gdImageJxlAnimBeginCtx(out, width, height, lossless, distance, effort);
-    if (anim == NULL) {
+    writer = gdJxlWriteOpenCtx(out, options);
+    if (writer == NULL) {
         out->gd_free(out);
         return NULL;
     }
-
-    anim->ownsCtx = 1;
-    anim->memoryWriter = 1;
-    return anim;
+    writer->ownsCtx = 1;
+    writer->memoryWriter = 1;
+    return writer;
 }
 
-BGD_DECLARE(int)
-gdImageJxlAnimAddFrame(gdJxlAnimPtr anim, gdImagePtr im, int delay_ms)
+BGD_DECLARE(int) gdJxlWriteAddImage(gdJxlWritePtr writer, gdImagePtr image, int delay_ms)
 {
     JxlFrameHeader fhdr;
     JxlPixelFormat fmt;
@@ -769,39 +823,41 @@ gdImageJxlAnimAddFrame(gdJxlAnimPtr anim, gdImagePtr im, int delay_ms)
     int has_alpha = 0;
     int w, h;
 
-    if (anim == NULL || im == NULL || delay_ms < 0 || anim->finalized) {
+    if (writer == NULL || image == NULL || delay_ms < 0 || writer->finalized) {
         return 0;
     }
 
-    if (!gdImageTrueColor(im)) {
+    if (!gdImageTrueColor(image)) {
         gd_error("Palette image not supported by JXL animation");
         return 0;
     }
 
-    w = gdImageSX(im);
-    h = gdImageSY(im);
-
-    if (w != (int)anim->width || h != (int)anim->height) {
-        gd_error("gdImageJxlAnimAddFrame: frame size must match canvas size");
+    if (!JxlWriteEnsureEncoder(writer, image)) {
         return 0;
     }
 
-    if (!JxlImageToRGBA(im, &pixels, &has_alpha)) {
-        gd_error("gdImageJxlAnimAddFrame: pixel extraction failed");
+    w = gdImageSX(image);
+    h = gdImageSY(image);
+
+    if (w != (int)writer->width || h != (int)writer->height) {
+        gd_error("gd-jxl write: frame size must match canvas size");
         return 0;
     }
 
-    /* Update alpha info for this frame if needed */
-    if (has_alpha && anim->has_alpha == 0) {
-        anim->has_alpha = 1;
+    if (!JxlImageToRGBA(image, &pixels, &has_alpha)) {
+        gd_error("gd-jxl write: pixel extraction failed");
+        return 0;
     }
 
-    /* Set frame header - duration only, REPLACE blend, full canvas */
+    if (has_alpha && writer->has_alpha == 0) {
+        writer->has_alpha = 1;
+    }
+
     JxlEncoderInitFrameHeader(&fhdr);
     fhdr.duration = (uint32_t)delay_ms; /* ticks == ms */
 
-    if (JxlEncoderSetFrameHeader(anim->frame_opts, &fhdr) != JXL_ENC_SUCCESS) {
-        gd_error("gdImageJxlAnimAddFrame: JxlEncoderSetFrameHeader failed");
+    if (JxlEncoderSetFrameHeader(writer->frame_opts, &fhdr) != JXL_ENC_SUCCESS) {
+        gd_error("gd-jxl write: JxlEncoderSetFrameHeader failed");
         gdFree(pixels);
         return 0;
     }
@@ -811,9 +867,9 @@ gdImageJxlAnimAddFrame(gdJxlAnimPtr anim, gdImagePtr im, int delay_ms)
     fmt.endianness = JXL_NATIVE_ENDIAN;
     fmt.align = 0;
 
-    if (JxlEncoderAddImageFrame(anim->frame_opts, &fmt, pixels, (size_t)w * (size_t)h * 4) !=
+    if (JxlEncoderAddImageFrame(writer->frame_opts, &fmt, pixels, (size_t)w * (size_t)h * 4) !=
         JXL_ENC_SUCCESS) {
-        gd_error("gdImageJxlAnimAddFrame: JxlEncoderAddImageFrame failed");
+        gd_error("gd-jxl write: JxlEncoderAddImageFrame failed");
         gdFree(pixels);
         return 0;
     }
@@ -821,83 +877,83 @@ gdImageJxlAnimAddFrame(gdJxlAnimPtr anim, gdImagePtr im, int delay_ms)
     gdFree(pixels);
     pixels = NULL;
 
-    anim->timestamp += delay_ms;
+    writer->timestamp += delay_ms;
+    writer->frameCount++;
     return 1;
 }
 
-BGD_DECLARE(int) gdImageJxlAnimEnd(gdJxlAnimPtr anim)
+static int JxlWriteFinish(gdJxlWritePtr writer)
 {
-    int ret = 0;
-
-    if (anim == NULL) {
+    if (writer == NULL || writer->finalized || writer->enc == NULL || writer->frameCount == 0) {
         return 0;
     }
 
-    if (!anim->finalized) {
-        JxlEncoderCloseInput(anim->enc);
-
-        if (!JxlAnimDrainEncoder(anim)) {
-            goto anim_end_cleanup;
-        }
-
-        anim->finalized = 1;
+    JxlEncoderCloseInput(writer->enc);
+    if (!JxlWriteDrainEncoder(writer)) {
+        return 0;
     }
-
-    ret = 1;
-
-anim_end_cleanup:
-    // anim->frame_opts is owned by anim->enc, so no separate destroy needed
-    if (anim->enc)
-        JxlEncoderDestroy(anim->enc);
-    if (anim->ownsCtx && anim->ctx)
-        anim->ctx->gd_free(anim->ctx);
-    gdFree(anim);
-    return ret;
+    writer->finalized = 1;
+    return 1;
 }
 
-BGD_DECLARE(void *) gdImageJxlAnimEndPtr(gdJxlAnimPtr anim, int *size)
+static void JxlWriteFree(gdJxlWritePtr writer)
+{
+    if (writer == NULL) {
+        return;
+    }
+    if (writer->enc) {
+        JxlEncoderDestroy(writer->enc);
+    }
+    if (writer->ownsCtx && writer->ctx) {
+        writer->ctx->gd_free(writer->ctx);
+    }
+    gdFree(writer);
+}
+
+BGD_DECLARE(void) gdJxlWriteClose(gdJxlWritePtr writer)
+{
+    if (writer == NULL) {
+        return;
+    }
+    if (!writer->finalized) {
+        (void)JxlWriteFinish(writer);
+    }
+    JxlWriteFree(writer);
+}
+
+BGD_DECLARE(void *) gdJxlWritePtrFinish(gdJxlWritePtr writer, int *size)
 {
     void *rv = NULL;
 
     if (size != NULL) {
         *size = 0;
     }
-    if (anim == NULL || !anim->memoryWriter) {
-        if (anim != NULL) {
-            gdImageJxlAnimEnd(anim);
+    if (writer == NULL || !writer->memoryWriter) {
+        if (writer != NULL) {
+            gdJxlWriteClose(writer);
         }
         return NULL;
     }
 
-    if (!anim->finalized) {
-        JxlEncoderCloseInput(anim->enc);
-
-        if (!JxlAnimDrainEncoder(anim)) {
-            goto anim_end_ptr_cleanup;
-        }
-
-        anim->finalized = 1;
+    if (!writer->finalized && !JxlWriteFinish(writer)) {
+        goto finish_cleanup;
     }
 
-    rv = gdDPExtractData(anim->ctx, size);
+    rv = gdDPExtractData(writer->ctx, size);
 
-anim_end_ptr_cleanup:
-    if (anim->enc)
-        JxlEncoderDestroy(anim->enc);
-    if (anim->ctx)
-        anim->ctx->gd_free(anim->ctx);
-    gdFree(anim);
+finish_cleanup:
+    JxlWriteFree(writer);
     return rv;
 }
 
 /* ---- Animation read (coalesced & raw) ---- */
 
-static gdJxlAnimReaderPtr _gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx, int coalesced)
+static gdJxlReadPtr JxlReadOpenCtx(gdIOCtxPtr inCtx, int coalesced)
 {
     size_t buf_len = 0;
     uint8_t *buf = NULL;
     JxlDecoder *dec = NULL;
-    gdJxlAnimReaderPtr reader = NULL;
+    gdJxlReadPtr reader = NULL;
 
     if (inCtx == NULL) {
         return NULL;
@@ -910,12 +966,12 @@ static gdJxlAnimReaderPtr _gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx, int c
 
     dec = JxlDecoderCreate(NULL);
     if (dec == NULL) {
-        gd_error("gdImageJxlAnimReaderCreate: JxlDecoderCreate failed");
+        gd_error("gd-jxl read: JxlDecoderCreate failed");
         gdFree(buf);
         return NULL;
     }
 
-    reader = (gdJxlAnimReaderPtr)gdCalloc(1, sizeof(struct gdJxlAnimReader));
+    reader = (gdJxlReadPtr)gdCalloc(1, sizeof(struct gdJxlRead));
     if (reader == NULL) {
         JxlDecoderDestroy(dec);
         gdFree(buf);
@@ -948,7 +1004,7 @@ static gdJxlAnimReaderPtr _gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx, int c
         JxlDecoderStatus status = JxlDecoderProcessInput(dec);
         if (status == JXL_DEC_BASIC_INFO) {
             if (JxlDecoderGetBasicInfo(dec, &reader->info) != JXL_DEC_SUCCESS) {
-                gd_error("gdImageJxlAnimReaderCreate: failed to get basic info");
+                gd_error("gd-jxl read: failed to get basic info");
                 JxlDecoderDestroy(dec);
                 gdFree(buf);
                 gdFree(reader);
@@ -957,7 +1013,7 @@ static gdJxlAnimReaderPtr _gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx, int c
             break;
         }
         if (status == JXL_DEC_ERROR || status == JXL_DEC_SUCCESS) {
-            gd_error("gdImageJxlAnimReaderCreate: failed to get basic info");
+            gd_error("gd-jxl read: failed to get basic info");
             JxlDecoderDestroy(dec);
             gdFree(buf);
             gdFree(reader);
@@ -975,66 +1031,79 @@ static gdJxlAnimReaderPtr _gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx, int c
     return reader;
 }
 
-BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreate(FILE *inFile)
+static int JxlReadNormalizeOptions(const gdJxlReadOptions *options, gdJxlReadOptions *normalized)
 {
-    gdIOCtx *in = gdNewFileCtx(inFile);
-    if (!in) {
+    gdJxlReadOptions defaults;
+
+    gdJxlReadOptionsInit(&defaults);
+    *normalized = defaults;
+    if (options == NULL) {
+        return 1;
+    }
+    if (options->struct_size < sizeof(gdJxlReadOptions)) {
+        gd_error("gd-jxl read: invalid options structure size");
+        return 0;
+    }
+    *normalized = *options;
+    return 1;
+}
+
+BGD_DECLARE(gdJxlReadPtr) gdJxlReadOpen(FILE *inFile, const gdJxlReadOptions *options)
+{
+    gdIOCtx *in;
+    gdJxlReadPtr reader;
+
+    if (inFile == NULL) {
         return NULL;
     }
-    gdJxlAnimReaderPtr reader = _gdImageJxlAnimReaderCreateCtx(in, JXL_TRUE);
+    in = gdNewFileCtx(inFile);
+    if (in == NULL) {
+        return NULL;
+    }
+    reader = gdJxlReadOpenCtx(in, options);
     in->gd_free(in);
     return reader;
 }
 
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreatePtr(int size, void *data)
+BGD_DECLARE(gdJxlReadPtr) gdJxlReadOpenCtx(gdIOCtxPtr inCtx, const gdJxlReadOptions *options)
 {
-    gdIOCtx *in = gdNewDynamicCtxEx(size, data, 0);
-    if (!in) {
+    gdJxlReadOptions normalized;
+
+    if (!JxlReadNormalizeOptions(options, &normalized)) {
         return NULL;
     }
-    gdJxlAnimReaderPtr reader = _gdImageJxlAnimReaderCreateCtx(in, JXL_TRUE);
+    return JxlReadOpenCtx(inCtx, normalized.coalesced ? JXL_TRUE : JXL_FALSE);
+}
+
+BGD_DECLARE(gdJxlReadPtr)
+gdJxlReadOpenPtr(int size, void *data, const gdJxlReadOptions *options)
+{
+    gdIOCtx *in;
+    gdJxlReadPtr reader;
+
+    in = gdNewDynamicCtxEx(size, data, 0);
+    if (in == NULL) {
+        return NULL;
+    }
+    reader = gdJxlReadOpenCtx(in, options);
     in->gd_free(in);
     return reader;
 }
 
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx)
+BGD_DECLARE(int) gdJxlReadGetInfo(gdJxlReadPtr reader, gdJxlInfo *info)
 {
-    return _gdImageJxlAnimReaderCreateCtx(inCtx, JXL_TRUE);
-}
-
-BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreateRaw(FILE *inFile)
-{
-    gdIOCtx *in = gdNewFileCtx(inFile);
-    if (!in) {
-        return NULL;
+    if (reader == NULL || info == NULL) {
+        return 0;
     }
-    gdJxlAnimReaderPtr reader = _gdImageJxlAnimReaderCreateCtx(in, JXL_FALSE);
-    in->gd_free(in);
-    return reader;
-}
-
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreateRawPtr(int size, void *data)
-{
-    gdIOCtx *in = gdNewDynamicCtxEx(size, data, 0);
-    if (!in) {
-        return NULL;
-    }
-    gdJxlAnimReaderPtr reader = _gdImageJxlAnimReaderCreateCtx(in, JXL_FALSE);
-    in->gd_free(in);
-    return reader;
-}
-
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreateRawCtx(gdIOCtxPtr inCtx)
-{
-    return _gdImageJxlAnimReaderCreateCtx(inCtx, JXL_FALSE);
+    info->width = (int)reader->info.xsize;
+    info->height = (int)reader->info.ysize;
+    info->animated = reader->info.have_animation == JXL_TRUE;
+    info->loop_count = info->animated ? (int)reader->info.animation.num_loops : 0;
+    return 1;
 }
 
 /* Helper: build gdImagePtr from current decoder state */
-static gdImagePtr JxlAnimReaderGetCurrentFrame(gdJxlAnimReaderPtr reader, int *delay_ms)
+static gdImagePtr JxlReadGetCurrentImage(gdJxlReadPtr reader, int *delay_ms)
 {
     JxlDecoder *dec = reader->dec;
     JxlBasicInfo info = reader->info;
@@ -1144,13 +1213,28 @@ static gdImagePtr JxlAnimReaderGetCurrentFrame(gdJxlAnimReaderPtr reader, int *d
     }
 }
 
-BGD_DECLARE(gdImagePtr)
-gdJxlReadNextImage(gdJxlAnimReaderPtr reader, int *delay_ms)
+BGD_DECLARE(int)
+gdJxlReadNextImage(gdJxlReadPtr reader, int *delay_ms, gdImagePtr *image)
 {
     if (reader == NULL || reader->coalesced == 0) {
-        return NULL;
+        return -1;
     }
-    return JxlAnimReaderGetCurrentFrame(reader, delay_ms);
+    if (image != NULL) {
+        *image = NULL;
+    }
+    if (reader->done) {
+        return 0;
+    }
+    if (image == NULL) {
+        gdImagePtr ignored = JxlReadGetCurrentImage(reader, delay_ms);
+        if (ignored == NULL) {
+            return 0;
+        }
+        gdImageDestroy(ignored);
+        return 1;
+    }
+    *image = JxlReadGetCurrentImage(reader, delay_ms);
+    return *image != NULL ? 1 : 0;
 }
 
 /* For non-coalesced reader, we need to extract frame info */
@@ -1166,7 +1250,7 @@ static void JxlFrameHeaderToInfo(const JxlFrameHeader *fhdr, const JxlBasicInfo 
     out->is_last = (int)fhdr->is_last;
 }
 
-static gdImagePtr JxlAnimReaderGetCurrentRawFrame(gdJxlAnimReaderPtr reader, gdJxlFrameInfo *info)
+static gdImagePtr JxlReadGetCurrentRawFrame(gdJxlReadPtr reader, gdJxlFrameInfo *info)
 {
     JxlDecoder *dec = reader->dec;
     JxlBasicInfo basic = reader->info;
@@ -1262,16 +1346,31 @@ static gdImagePtr JxlAnimReaderGetCurrentRawFrame(gdJxlAnimReaderPtr reader, gdJ
     }
 }
 
-BGD_DECLARE(gdImagePtr)
-gdJxlReadNextFrame(gdJxlAnimReaderPtr reader, gdJxlFrameInfo *info)
+BGD_DECLARE(int)
+gdJxlReadNextFrame(gdJxlReadPtr reader, gdJxlFrameInfo *info, gdImagePtr *frame)
 {
     if (reader == NULL || reader->coalesced != 0 || info == NULL) {
-        return NULL;
+        return -1;
     }
-    return JxlAnimReaderGetCurrentRawFrame(reader, info);
+    if (frame != NULL) {
+        *frame = NULL;
+    }
+    if (reader->done) {
+        return 0;
+    }
+    if (frame == NULL) {
+        gdImagePtr ignored = JxlReadGetCurrentRawFrame(reader, info);
+        if (ignored == NULL) {
+            return 0;
+        }
+        gdImageDestroy(ignored);
+        return 1;
+    }
+    *frame = JxlReadGetCurrentRawFrame(reader, info);
+    return *frame != NULL ? 1 : 0;
 }
 
-BGD_DECLARE(void) gdImageJxlAnimReaderDestroy(gdJxlAnimReaderPtr reader)
+BGD_DECLARE(void) gdJxlReadClose(gdJxlReadPtr reader)
 {
     if (reader == NULL) {
         return;
@@ -1286,6 +1385,27 @@ BGD_DECLARE(void) gdImageJxlAnimReaderDestroy(gdJxlAnimReaderPtr reader)
 #else /* !HAVE_LIBJXL */
 
 static void _noJxlError(void) { gd_error("JXL image support has been disabled\n"); }
+
+BGD_DECLARE(void) gdJxlReadOptionsInit(gdJxlReadOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = sizeof(*options);
+    options->coalesced = 1;
+}
+
+BGD_DECLARE(void) gdJxlWriteOptionsInit(gdJxlWriteOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = sizeof(*options);
+    options->distance = 1.0f;
+    options->effort = 7;
+}
 
 BGD_DECLARE(gdImagePtr) gdImageCreateFromJxl(FILE *inFile)
 {
@@ -1366,137 +1486,111 @@ gdImageJxlCtxEx(gdImagePtr im, gdIOCtxPtr outfile, int lossless, float distance,
 }
 
 /* Animation stubs */
-BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreate(FILE *inFile)
+BGD_DECLARE(gdJxlReadPtr) gdJxlReadOpen(FILE *inFile, const gdJxlReadOptions *options)
 {
     ARG_NOT_USED(inFile);
+    ARG_NOT_USED(options);
     _noJxlError();
     return NULL;
 }
 
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreatePtr(int size, void *data)
+BGD_DECLARE(gdJxlReadPtr) gdJxlReadOpenCtx(gdIOCtxPtr inCtx, const gdJxlReadOptions *options)
+{
+    ARG_NOT_USED(inCtx);
+    ARG_NOT_USED(options);
+    _noJxlError();
+    return NULL;
+}
+
+BGD_DECLARE(gdJxlReadPtr)
+gdJxlReadOpenPtr(int size, void *data, const gdJxlReadOptions *options)
 {
     ARG_NOT_USED(size);
     ARG_NOT_USED(data);
+    ARG_NOT_USED(options);
     _noJxlError();
     return NULL;
 }
 
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreateCtx(gdIOCtxPtr inCtx)
-{
-    ARG_NOT_USED(inCtx);
-    _noJxlError();
-    return NULL;
-}
-
-BGD_DECLARE(gdImagePtr)
-gdJxlReadNextImage(gdJxlAnimReaderPtr reader, int *delay_ms)
-{
-    ARG_NOT_USED(reader);
-    ARG_NOT_USED(delay_ms);
-    _noJxlError();
-    return NULL;
-}
-
-BGD_DECLARE(gdJxlAnimReaderPtr) gdImageJxlAnimReaderCreateRaw(FILE *inFile)
-{
-    ARG_NOT_USED(inFile);
-    _noJxlError();
-    return NULL;
-}
-
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreateRawPtr(int size, void *data)
-{
-    ARG_NOT_USED(size);
-    ARG_NOT_USED(data);
-    _noJxlError();
-    return NULL;
-}
-
-BGD_DECLARE(gdJxlAnimReaderPtr)
-gdImageJxlAnimReaderCreateRawCtx(gdIOCtxPtr inCtx)
-{
-    ARG_NOT_USED(inCtx);
-    _noJxlError();
-    return NULL;
-}
-
-BGD_DECLARE(gdImagePtr)
-gdJxlReadNextFrame(gdJxlAnimReaderPtr reader, gdJxlFrameInfo *info)
+BGD_DECLARE(int) gdJxlReadGetInfo(gdJxlReadPtr reader, gdJxlInfo *info)
 {
     ARG_NOT_USED(reader);
     ARG_NOT_USED(info);
     _noJxlError();
-    return NULL;
+    return 0;
 }
 
-BGD_DECLARE(void) gdImageJxlAnimReaderDestroy(gdJxlAnimReaderPtr reader)
+BGD_DECLARE(int)
+gdJxlReadNextImage(gdJxlReadPtr reader, int *delay_ms, gdImagePtr *image)
+{
+    ARG_NOT_USED(reader);
+    ARG_NOT_USED(delay_ms);
+    if (image != NULL) {
+        *image = NULL;
+    }
+    _noJxlError();
+    return -1;
+}
+
+BGD_DECLARE(int)
+gdJxlReadNextFrame(gdJxlReadPtr reader, gdJxlFrameInfo *info, gdImagePtr *frame)
+{
+    ARG_NOT_USED(reader);
+    ARG_NOT_USED(info);
+    if (frame != NULL) {
+        *frame = NULL;
+    }
+    _noJxlError();
+    return -1;
+}
+
+BGD_DECLARE(void) gdJxlReadClose(gdJxlReadPtr reader)
 {
     ARG_NOT_USED(reader);
     _noJxlError();
 }
 
-BGD_DECLARE(gdJxlAnimPtr)
-gdImageJxlAnimBegin(FILE *outFile, int width, int height, int lossless, float distance, int effort)
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpen(FILE *outFile, const gdJxlWriteOptions *options)
 {
     ARG_NOT_USED(outFile);
-    ARG_NOT_USED(width);
-    ARG_NOT_USED(height);
-    ARG_NOT_USED(lossless);
-    ARG_NOT_USED(distance);
-    ARG_NOT_USED(effort);
+    ARG_NOT_USED(options);
     _noJxlError();
     return NULL;
 }
 
-BGD_DECLARE(gdJxlAnimPtr)
-gdImageJxlAnimBeginCtx(gdIOCtxPtr outCtx, int width, int height, int lossless, float distance,
-                       int effort)
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenCtx(gdIOCtxPtr outCtx, const gdJxlWriteOptions *options)
 {
     ARG_NOT_USED(outCtx);
-    ARG_NOT_USED(width);
-    ARG_NOT_USED(height);
-    ARG_NOT_USED(lossless);
-    ARG_NOT_USED(distance);
-    ARG_NOT_USED(effort);
+    ARG_NOT_USED(options);
     _noJxlError();
     return NULL;
 }
 
-BGD_DECLARE(gdJxlAnimPtr)
-gdImageJxlAnimBeginPtr(int width, int height, int lossless, float distance, int effort)
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenPtr(const gdJxlWriteOptions *options)
 {
-    ARG_NOT_USED(width);
-    ARG_NOT_USED(height);
-    ARG_NOT_USED(lossless);
-    ARG_NOT_USED(distance);
-    ARG_NOT_USED(effort);
+    ARG_NOT_USED(options);
     _noJxlError();
     return NULL;
 }
 
-BGD_DECLARE(int)
-gdImageJxlAnimAddFrame(gdJxlAnimPtr anim, gdImagePtr im, int delay_ms)
+BGD_DECLARE(int) gdJxlWriteAddImage(gdJxlWritePtr writer, gdImagePtr image, int delay_ms)
 {
-    ARG_NOT_USED(anim);
-    ARG_NOT_USED(im);
+    ARG_NOT_USED(writer);
+    ARG_NOT_USED(image);
     ARG_NOT_USED(delay_ms);
     _noJxlError();
     return 0;
 }
 
-BGD_DECLARE(int) gdImageJxlAnimEnd(gdJxlAnimPtr anim)
+BGD_DECLARE(void) gdJxlWriteClose(gdJxlWritePtr writer)
 {
-    ARG_NOT_USED(anim);
+    ARG_NOT_USED(writer);
     _noJxlError();
-    return 0;
 }
 
-BGD_DECLARE(void *) gdImageJxlAnimEndPtr(gdJxlAnimPtr anim, int *size)
+BGD_DECLARE(void *) gdJxlWritePtrFinish(gdJxlWritePtr writer, int *size)
 {
-    ARG_NOT_USED(anim);
+    ARG_NOT_USED(writer);
     if (size != NULL) {
         *size = 0;
     }

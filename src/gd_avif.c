@@ -280,43 +280,6 @@ static avifIO *createAvifIOFromCtx(gdIOCtx *ctx)
     return (avifIO *)reader;
 }
 
-/*** Decoding functions ***/
-
-/*
-        Function: gdImageCreateFromAvif
-
-                <gdImageCreateFromAvif> is called to load truecolor images from
-                AVIF format files. Invoke <gdImageCreateFromAvif> with an
-                already opened pointer to a file containing the desired
-                image. <gdImageCreateFromAvif> returns a <gdImagePtr> to the new
-                truecolor image, or NULL if unable to load the image (most often
-                because the file is corrupt or does not contain a AVIF
-                image). <gdImageCreateFromAvif> does not close the file.
-
-                This function creates a gdIOCtx struct from the file pointer it's
-                passed. And then it relies on <gdImageCreateFromAvifCtx> to do the real
-                decoding work. If the file contains an image sequence, we simply read the
-                first one, discarding the rest.
-
-        Variants:
-
-                <gdImageCreateFromAvifPtr> creates an image from AVIF data
-                already in memory.
-
-                <gdImageCreateFromAvifCtx> reads data from the function
-                pointers in a <gdIOCtx> structure.
-
-        Parameters:
-
-                infile - pointer to the input file
-
-        Returns:
-
-                A pointer to the new truecolor image.	This will need to be
-                destroyed with <gdImageDestroy> once it is no longer needed.
-
-                On error, returns 0.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromAvif(FILE *infile)
 {
     gdImagePtr im;
@@ -331,16 +294,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromAvif(FILE *infile)
     return im;
 }
 
-/*
-        Function: gdImageCreateFromAvifPtr
-
-                See <gdImageCreateFromAvif>.
-
-        Parameters:
-
-                size						- size of Avif data in bytes.
-                data						- pointer to Avif data.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromAvifPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -355,33 +308,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromAvifPtr(int size, void *data)
     return im;
 }
 
-/*
-        Function: gdImageCreateFromAvifCtx
-
-                See <gdImageCreateFromAvif>.
-
-                Additional details: the AVIF library comes with functions to create an
-   IO object from a file and from a memory pointer. Of course, it doesn't have a
-   way to create an IO object from a gdIOCtx. So, here, we use our own helper
-   function, <createAvifIOfromCtx>.
-
-                Otherwise, we create the image by calling AVIF library functions in
-   order:
-                * avifDecoderCreate(), to create the decoder
-                * avifDecoderSetIO(), to tell libavif how to read from our data
-   structure
-                * avifDecoderParse(), to parse the image
-                * avifDecoderNextImage(), to read the first image from the decoder
-                * avifRGBImageSetDefaults(), to create the avifRGBImage
-                * avifRGBImageAllocatePixels(), to allocate memory for the pixels
-                * avifImageYUVToRGB(), to convert YUV to RGB
-
-                Finally, we create a new gd image and copy over the pixel data.
-
-        Parameters:
-
-                ctx							- a gdIOCtx struct
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromAvifCtx(gdIOCtx *ctx)
 {
     uint32_t x, y;
@@ -478,70 +404,6 @@ cleanup:
 
 /*** Encoding functions ***/
 
-/*
-        Function: gdImageAvifEx
-
-                <gdImageAvifEx> outputs the specified image to the specified file in
-                AVIF format. The file must be open for writing. Under MSDOS and
-                all versions of Windows, it is important to use "wb" as opposed to
-                simply "w" as the mode when opening the file, and under Unix there
-                is no penalty for doing so. <gdImageAvifEx> does not close the file;
-                your code must do so.
-
-        Variants:
-
-                <gdImageAvifEx> writes the image to a file, encoding with the default
-   quality and speed.
-
-                <gdImageAvifPtrEx> stores the image in RAM.
-
-                <gdImageAvifPtr> stores the image in RAM, encoding with the default
-   quality and speed.
-
-                <gdImageAvifCtx> stores the image using a <gdIOCtx> struct.
-
-        Parameters:
-
-                im			- The image to save.
-                outFile - The FILE pointer to write to.
-                quality - Compression quality (0-100). 0 is lowest-quality, 100 is
-   highest. speed	  - The speed of compression (0-10). 0 is slowest, 10 is
-   fastest.
-
-        Notes on parameters:
-                quality - If quality = -1, we use a default quality as defined in
-   QUALITY_DEFAULT. For information on how we convert this quality to libavif's
-   quantity param, see <quality2Quantizer>.
-
-                speed - At slower speeds, encoding may be quite slow. Use judiciously.
-
-                Qualities or speeds that are lower than the minimum value get clamped to
-   the minimum value, and qualities or speeds that are lower than the maximum
-   value get clamped to the maximum value. Note that AVIF_SPEED_DEFAULT is -1.
-   If we ever set SPEED_DEFAULT = AVIF_SPEED_DEFAULT, we'd want to add a
-   conditional to ensure that value doesn't get clamped.
-
-
-        Returns:
-
-                * for <gdImageAvifEx>, <gdImageAvif>, and <gdImageAvifCtx>, nothing.
-                * for <gdImageAvifPtrEx> and <gdImageAvifPtr>, a pointer to the image in
-   memory.
-*/
-
-/*
-         Private subobject
-         Function: _gdImageAvifCtx
-
-         We need this underscored function because gdImageAvifCtx() can't return
-   anything. And our functions that operate on a memory buffer need to know
-   whether the encoding has succeeded.
-
-         If we're passed the QUALITY_DEFAULT of -1, set the quantizer params to
-   QUANTIZER_DEFAULT.
-
-         This function returns 0 on success, or 1 on failure.
- */
 static avifBool _gdImageAvifCtx(gdImagePtr im, gdIOCtx *outfile, const gdAvifWriteOptions *options)
 {
     avifResult result;

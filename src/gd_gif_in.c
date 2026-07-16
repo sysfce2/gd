@@ -863,49 +863,6 @@ gdGifReadNextImage(gdGifReadPtr gif, gdGifFrameInfo *info, gdImagePtr *image)
     return 1;
 }
 
-/*
-  Function: gdImageCreateFromGif
-
-        <gdImageCreateFromGif> is called to load images from GIF format
-        files. Invoke <gdImageCreateFromGif> with an already opened
-        pointer to a file containing the desired
-        image.
-
-        <gdImageCreateFromGif> returns a <gdImagePtr> to the new image, or
-        NULL if unable to load the image (most often because the file is
-        corrupt or does not contain a GIF image). <gdImageCreateFromGif>
-        does not close the file. You can inspect the sx and sy members of
-        the image to determine its size. The image must eventually be
-        destroyed using <gdImageDestroy>.
-
-  Variants:
-
-        <gdImageCreateFromGifPtr> creates an image from GIF data (i.e. the
-        contents of a GIF file) already in memory.
-
-        <gdImageCreateFromGifCtx> reads in an image using the functions in
-        a <gdIOCtx> struct.
-
-  Parameters:
-
-        infile - The input FILE pointer
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-  Example:
-
-        > gdImagePtr im;
-        > ... inside a function ...
-        > FILE *in;
-        > in = fopen("mygif.gif", "rb");
-        > im = gdImageCreateFromGif(in);
-        > fclose(in);
-        > // ... Use the image ...
-        > gdImageDestroy(im);
-
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromGif(FILE *fdFile)
 {
     gdIOCtx *fd = gdNewFileCtx(fdFile);
@@ -920,16 +877,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromGif(FILE *fdFile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromGifPtr
-
-  Parameters:
-
-        size - size of GIF data in bytes.
-        data - GIF data (i.e. contents of a GIF file).
-
-  See <gdImageCreateFromGif>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromGifPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -942,11 +889,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromGifPtr(int size, void *data)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromGifCtx
-
-  See <gdImageCreateFromGif>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromGifCtx(gdIOCtxPtr fd)
 {
     int BitPixel;

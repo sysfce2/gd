@@ -20,45 +20,6 @@
 #include <string.h>
 #define MAX_XBM_LINE_SIZE 255
 
-/*
-  Function: gdImageCreateFromXbm
-
-        <gdImageCreateFromXbm> is called to load images from X bitmap
-        format files. Invoke <gdImageCreateFromXbm> with an already opened
-        pointer to a file containing the desired
-        image. <gdImageCreateFromXbm> returns a <gdImagePtr> to the new
-        image, or NULL if unable to load the image (most often because the
-        file is corrupt or does not contain an X bitmap format
-        image). <gdImageCreateFromXbm> does not close the file.
-
-        You can inspect the sx and sy members of the image to determine
-        its size. The image must eventually be destroyed using
-        <gdImageDestroy>.
-
-        X11 X bitmaps (which define a char[]) as well as X10 X bitmaps (which define
-        a short[]) are supported.
-
-  Parameters:
-
-        fd - The input FILE pointer
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-  Example:
-        (start code)
-
-        gdImagePtr im;
-        FILE *in;
-        in = fopen("myxbm.xbm", "rb");
-        im = gdImageCreateFromXbm(in);
-        fclose(in);
-        // ... Use the image ...
-        gdImageDestroy(im);
-
-        (end code)
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromXbm(FILE *fd)
 {
     char fline[MAX_XBM_LINE_SIZE];

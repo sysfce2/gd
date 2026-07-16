@@ -210,29 +210,6 @@ BGD_DECLARE(gdImagePtr) gdImageReadCtx(gdIOCtxPtr ctx)
     return NULL;
 }
 
-/*
-  Function: gdImageReadFile
-
-        Read an image file, auto-detecting the format by magic-byte
-        signatures rather than filename extension.
-
-        <gdImageReadFile> opens the file, probes its header bytes to
-        determine the format, and calls the appropriate
-        _gdImageCreateFrom*Ctx_ function. If the format has no Ctx
-        reader (XPM, XBM), it falls back to the filename-based or
-        FILE*-based reader.
-
-        NULL is returned on error or if the format is not recognized.
-
-  Parameters:
-
-        filename    - the input file name
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-*/
 BGD_DECLARE(gdImagePtr) gdImageReadFile(const char *filename)
 {
     FILE *fh;

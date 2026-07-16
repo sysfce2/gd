@@ -7,6 +7,7 @@ LIST(APPEND TESTS_FILES
 	jxl_alpha
 	jxl_read_file
 	jxl_palette
+	jxl_api_symbols
 	jxl_anim
 	jxl_anim_lossless
 	jxl_anim_raw

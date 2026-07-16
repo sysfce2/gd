@@ -4,7 +4,7 @@
 
 int main() {
 	gdImagePtr red, blue, frame;
-	gdJxlAnimReaderPtr reader;
+	gdJxlReadPtr reader;
 	void *data;
 	int size = 0;
 	int delay = -1;
@@ -18,23 +18,23 @@ int main() {
 	if (!gdTestAssert(data != NULL) || !gdTestAssert(size > 0))
 		goto cleanup_images;
 
-	reader = gdImageJxlAnimReaderCreatePtr(size, data);
+	reader = gdJxlReadOpenPtr(size, data, NULL);
 	if (!gdTestAssert(reader != NULL))
 		goto cleanup_data;
 
-	frame = gdJxlReadNextImage(reader, &delay);
+	gdTestAssert(gdJxlReadNextImage(reader, &delay, &frame) == 1);
 	gdTestAssert(frame != NULL);
 	gdTestAssert(delay == 120);
 	gdAssertImageEquals(red, frame);
 	gdImageDestroy(frame);
 
-	frame = gdJxlReadNextImage(reader, &delay);
+	gdTestAssert(gdJxlReadNextImage(reader, &delay, &frame) == 1);
 	gdTestAssert(frame != NULL);
 	gdTestAssert(delay == 80);
 	gdAssertImageEquals(blue, frame);
 	gdImageDestroy(frame);
 
-	gdImageJxlAnimReaderDestroy(reader);
+	gdJxlReadClose(reader);
 cleanup_data:
 	gdFree(data);
 cleanup_images:
