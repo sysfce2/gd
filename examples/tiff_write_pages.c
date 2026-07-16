@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 {
     FILE *out;
     gdTiffWritePtr writer;
-    gdTiffWriteOptions options = {0};
+    gdTiffWriteOptions options;
     int page;
 
     if (argc != 2) {
@@ -58,6 +58,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    gdTiffWriteOptionsInit(&options);
     options.colorspace = GD_TIFF_RGB;
     options.bitDepth = 8;
     options.compression = COMPRESSION_ADOBE_DEFLATE;

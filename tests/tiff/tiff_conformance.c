@@ -16,7 +16,7 @@ static void test_two_ifds_fixture(void) {
 		return;
 	}
 
-	reader = gdTiffReadOpen(fp);
+	reader = gdTiffReadOpen(fp, NULL);
 	fclose(fp);
 	gdTestAssertMsg(reader != NULL, "cannot open multipage TIFF fixture");
 	if (reader == NULL) {

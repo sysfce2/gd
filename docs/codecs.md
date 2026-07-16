@@ -58,7 +58,6 @@ Interlaced gd images produce progressive JPEGs.
 
 ```c
 typedef struct {
-    size_t struct_size;       // set by gdJpegReadOptionsInit()
     int ignore_warning;       // default 1 (ignore recoverable IJG warnings)
     unsigned int scale_num;   // default 1; scale numerator
     unsigned int scale_denom; // default 1; scale denominator  (scale_num/scale_denom)
@@ -80,7 +79,6 @@ typedef struct {
 
 ```c
 typedef struct {
-    size_t struct_size;          // set by gdJpegWriteOptionsInit()
     int quality;                 // default -1 (IJG default)
     int progressive;             // default 0; when negative gdImageGetInterlaced() is used
     int force_no_subsampling;    // default 0
@@ -152,7 +150,6 @@ produce Adam7 PNGs.
 
 ```c
 typedef struct {
-    size_t struct_size;
     int compression_level;         // 0–9, -1 = zlib default
     unsigned int filters;          // bitmask of GD_PNG_FILTER_* constants
     int compression_strategy;      // GD_PNG_COMPRESSION_STRATEGY_*
@@ -399,7 +396,6 @@ Blend constants: `gdWebpBlendAlpha` (0), `gdWebpBlendNone` (1).
 
 ```c
 typedef struct {
-    size_t struct_size;
     int coalesced;        // nonzero = full-canvas images, zero = raw frames
 } gdWebpReadOptions;
 ```
@@ -408,7 +404,6 @@ typedef struct {
 
 ```c
 typedef struct {
-    size_t struct_size;
     int canvasWidth;      // 0 = use first frame width
     int canvasHeight;     // 0 = use first frame height
     int loopCount;        // 0 = infinite
@@ -478,11 +473,21 @@ Image type selection:
 - Transparent index honoured on 24-bit → RGBA with full-transparent pixels.
 - Compression always `COMPRESSION_ADOBE_DEFLATE`.
 
-**Multi-page read:** `gdTiffRead*` API (re-reads the entire TIFF into memory,
-uses `TIFFNumberOfDirectories` to count pages, iterates with
+**Multi-page read:** `gdTiffRead*` API with read options (re-reads the entire
+TIFF into memory, uses `TIFFNumberOfDirectories` to count pages, iterates with
 `TIFFSetDirectory` / `TIFFReadDirectory`).
 
 **Multi-page write:** `gdTiffWrite*` API with options struct.
+
+### Read options — `gdTiffReadOptions`
+
+```c
+typedef struct {
+    int notused;
+} gdTiffReadOptions;
+```
+
+Initialize with `gdTiffReadOptionsInit()`. The `notused` field is reserved and currently unused.
 
 ### Read info — `gdTiffInfo`
 
@@ -492,10 +497,10 @@ typedef struct {
     int pageCount;
     int bitsPerSample;
     int samplesPerPixel;
-    int compression;     // GD_TIFF_COMPRESSION_* value
-    int photometric;     // GD_TIFF_PHOTOMETRIC_* value
+    int compression;     // GD_TIFF_COMPRESSION_* enum value
+    int photometric;     // GD_TIFF_PHOTOMETRIC_* enum value
     float xResolution, yResolution;
-    int resolutionUnit;  // GD_TIFF_RESUNIT_*
+    int resolutionUnit;  // GD_TIFF_RESUNIT_* enum value
 } gdTiffInfo;
 ```
 
@@ -508,7 +513,7 @@ typedef struct {
     int bitsPerSample, samplesPerPixel;
     int compression;
     int photometric;
-    int planar;          // GD_TIFF_PLANARCONFIG_CONTIG / SEPARATE
+    int planar;          // GD_TIFF_PLANARCONFIG_* enum value
     int hasAlpha;
     int isTiled;
     float xResolution, yResolution;
@@ -521,24 +526,26 @@ typedef struct {
 ```c
 typedef struct {
     int bitDepth;         // 1, 8, or 16; default 8
-    int colorspace;       // GD_TIFF_RGB / GD_TIFF_RGBA / GD_TIFF_GRAY / GD_TIFF_BILEVEL
-    int compression;      // GD_TIFF_COMPRESSION_*  (default ADOBE_DEFLATE)
+    gdTiffColorSpace colorspace;       // GD_TIFF_RGB / GD_TIFF_RGBA / GD_TIFF_GRAY / GD_TIFF_BILEVEL
+    gdTiffCompression compression;     // GD_TIFF_COMPRESSION_* (default ADOBE_DEFLATE)
     int jpegQuality;      // 1-100, only for JPEG compression; default 75
     int minIsWhite;       // for GD_TIFF_GRAY / GD_TIFF_BILEVEL: 1 = min-is-white photometric
-    int resolutionUnit;   // GD_TIFF_RESUNIT_* (default RESUNIT_INCH)
+    gdTiffResolutionUnit resolutionUnit; // GD_TIFF_RESUNIT_* (default RESUNIT_INCH)
     float xResolution;    // default 72.0
     float yResolution;    // default 72.0
-    int alphaType;        // GD_TIFF_ALPHA_UNASSOCIATED / GD_TIFF_ALPHA_ASSOCIATED
+    gdTiffAlphaType alphaType;         // GD_TIFF_ALPHA_UNASSOCIATED / GD_TIFF_ALPHA_ASSOCIATED
 } gdTiffWriteOptions;
 ```
 
-Colorspace constants:
+Initialize with `gdTiffWriteOptionsInit()` before overriding fields.
+
+Colorspace enum constants (`gdTiffColorSpace`):
 - `GD_TIFF_RGB` (1)
 - `GD_TIFF_RGBA` (2)
 - `GD_TIFF_GRAY` (3)
 - `GD_TIFF_BILEVEL` (4)
 
-Compression constants:
+Compression enum constants (`gdTiffCompression`):
 - `GD_TIFF_COMPRESSION_NONE` (1)
 - `GD_TIFF_COMPRESSION_CCITT_RLE` (2)
 - `GD_TIFF_COMPRESSION_CCITT_FAX3` (3) — 1-bit only
@@ -549,7 +556,7 @@ Compression constants:
 - `GD_TIFF_COMPRESSION_DEFLATE` (32946)
 - `GD_TIFF_COMPRESSION_PACKBITS` (32773)
 
-Photometric constants (for reading/info):
+Photometric enum constants (`gdTiffPhotometric`, for reading/info):
 - `GD_TIFF_PHOTOMETRIC_MINISWHITE` (0)
 - `GD_TIFF_PHOTOMETRIC_MINISBLACK` (1)
 - `GD_TIFF_PHOTOMETRIC_RGB` (2)
@@ -559,12 +566,12 @@ Photometric constants (for reading/info):
 - `GD_TIFF_PHOTOMETRIC_YCBCR` (6)
 - `GD_TIFF_PHOTOMETRIC_CIELAB` (8)
 
-Resolution unit constants:
+Resolution unit enum constants (`gdTiffResolutionUnit`):
 - `GD_TIFF_RESUNIT_NONE` (1)
 - `GD_TIFF_RESUNIT_INCH` (2)
 - `GD_TIFF_RESUNIT_CENTIMETER` (3)
 
-Alpha type:
+Alpha type enum constants (`gdTiffAlphaType`):
 - `GD_TIFF_ALPHA_UNASSOCIATED` (1) — default
 - `GD_TIFF_ALPHA_ASSOCIATED` (2)
 
@@ -579,12 +586,14 @@ Alpha type:
 **Multi-page probe**: `gdTiffIsMultiPage` / `gdTiffIsMultiPageCtx` / `gdTiffIsMultiPagePtr`
 
 **Multi-page read**:
-- `gdTiffReadOpen` / `gdTiffReadOpenCtx` / `gdTiffReadOpenPtr`
+- `gdTiffReadOptionsInit`
+- `gdTiffReadOpen` / `gdTiffReadOpenCtx` / `gdTiffReadOpenPtr` (pass options)
 - `gdTiffReadGetInfo`
 - `gdTiffReadNextImage` (next page → gdImage + `gdTiffPageInfo`)
 - `gdTiffReadClose`
 
 **Multi-page write**:
+- `gdTiffWriteOptionsInit`
 - `gdTiffWriteOpen` / `gdTiffWriteOpenCtx` / `gdTiffWriteOpenPtr` (pass options)
 - `gdTiffWriteAddImage` (adds one page)
 - `gdTiffWriteClose` (finalise)
@@ -641,28 +650,26 @@ typedef struct {
     int delay_ms;
     int x_offset, y_offset;
     int width, height;
-    int blend_mode;   // GD_JXL_BLEND_*
+    int blend_mode;   // gdJxlBlend*
     int is_last;
 } gdJxlFrameInfo;
 ```
 
 Blend constants:
-- `GD_JXL_BLEND_REPLACE` (0)
-- `GD_JXL_BLEND_ADD` (1)
-- `GD_JXL_BLEND_BLEND` (2)
-- `GD_JXL_BLEND_MULADD` (3)
-- `GD_JXL_BLEND_MUL` (4)
+- `gdJxlBlendReplace` (0)
+- `gdJxlBlendAdd` (1)
+- `gdJxlBlendBlend` (2)
+- `gdJxlBlendMuladd` (3)
+- `gdJxlBlendMul` (4)
 
 ### Read/write options
 
 ```c
 typedef struct {
-    size_t struct_size;
     int coalesced;
 } gdJxlReadOptions;
 
 typedef struct {
-    size_t struct_size;
     int canvasWidth, canvasHeight;
     int lossless;
     float distance;

@@ -79,7 +79,6 @@ int main(void)
 	}
 
 	gdJpegWriteOptionsInit(&options);
-	gdTestAssert(options.struct_size == sizeof(options));
 	gdTestAssert(options.quality == -1);
 	gdTestAssert(options.progressive == 0);
 	gdTestAssert(options.force_no_subsampling == 0);

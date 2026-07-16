@@ -58,7 +58,6 @@ BGD_DECLARE(void) gdWebpReadOptionsInit(gdWebpReadOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->coalesced = 1;
 }
 
@@ -68,7 +67,6 @@ BGD_DECLARE(void) gdWebpWriteOptionsInit(gdWebpWriteOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = -1;
     options->method = -1;
 }
@@ -385,10 +383,6 @@ static int WebpReadNormalizeOptions(const gdWebpReadOptions *options, gdWebpRead
     *normalized = defaults;
     if (options == NULL) {
         return 1;
-    }
-    if (options->struct_size < sizeof(gdWebpReadOptions)) {
-        gd_error("gd-webp read: invalid options structure size");
-        return 0;
     }
     *normalized = *options;
     return 1;
@@ -792,10 +786,6 @@ static int WebpWriteNormalizeOptions(const gdWebpWriteOptions *options,
     if (options == NULL) {
         return 1;
     }
-    if (options->struct_size < sizeof(gdWebpWriteOptions)) {
-        gd_error("gd-webp write: invalid options structure size");
-        return 0;
-    }
     *normalized = *options;
     return 1;
 }
@@ -1020,7 +1010,6 @@ BGD_DECLARE(void) gdWebpReadOptionsInit(gdWebpReadOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->coalesced = 1;
 }
 
@@ -1030,7 +1019,6 @@ BGD_DECLARE(void) gdWebpWriteOptionsInit(gdWebpWriteOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = -1;
     options->method = -1;
 }

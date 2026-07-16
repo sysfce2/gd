@@ -66,7 +66,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "cannot reopen %s\n", argv[1]);
         return 1;
     }
-    tiff = gdTiffReadOpen(in);
+    tiff = gdTiffReadOpen(in, NULL);
     fclose(in);
     if (tiff == NULL) {
         fprintf(stderr, "cannot create TIFF reader\n");

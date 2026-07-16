@@ -1,5 +1,6 @@
 if HAVE_LIBTIFF
 libgd_test_programs += \
+	tiff/tiff_api_symbols \
 	tiff/tiff_conformance \
 	tiff/tiff_dpi \
 	tiff/tiff_im2im \
@@ -20,6 +21,7 @@ EXTRA_DIST += \
 	tiff/flower-rgb-contig-16.tif \
 	tiff/flower-rgb-planar-16.tif \
 	tiff/tiff-conformance \
+	tiff/tiff_api_symbols.c \
 	tiff/tiff_invalid_read_1.tiff \
 	tiff/tiff_invalid_read_2.tiff \
 	tiff/tiff_invalid_read_3.tiff \

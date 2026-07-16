@@ -306,8 +306,8 @@ Implementation */
 #include <string.h>
 
 #ifndef QOI_MALLOC
-#define QOI_MALLOC(sz) malloc(sz)
-#define QOI_FREE(p) free(p)
+#define QOI_MALLOC(sz) gdMalloc(sz)
+#define QOI_FREE(p) gdFree(p)
 #endif
 #ifndef QOI_ZEROARR
 #define QOI_ZEROARR(a) memset((a), 0, sizeof(a))

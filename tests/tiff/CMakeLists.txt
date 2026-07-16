@@ -1,5 +1,6 @@
 IF(TIFF_FOUND)
 LIST(APPEND TESTS_FILES
+	tiff_api_symbols
 	tiff_conformance
 	tiff_im2im
 	tiff_invalid_read

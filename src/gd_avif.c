@@ -100,7 +100,6 @@ static int quality2Quantizer(int quality)
 BGD_DECLARE(void) gdAvifWriteOptionsInit(gdAvifWriteOptions *options)
 {
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = QUALITY_DEFAULT;
     options->speed = SPEED_DEFAULT;
     options->lossless = GD_FALSE;
@@ -641,7 +640,6 @@ static void *_noAvifError(void)
 BGD_DECLARE(void) gdAvifWriteOptionsInit(gdAvifWriteOptions *options)
 {
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = -1;
     options->speed = 6;
     options->lossless = GD_FALSE;

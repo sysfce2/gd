@@ -36,9 +36,7 @@ int main(void)
 	gdWebpReadOptionsInit(&readOptions);
 	gdWebpWriteOptionsInit(&writeOptions);
 
-	gdTestAssert(readOptions.struct_size == sizeof(readOptions));
 	gdTestAssert(readOptions.coalesced == 1);
-	gdTestAssert(writeOptions.struct_size == sizeof(writeOptions));
 	gdTestAssert(writeOptions.quality == -1);
 	gdTestAssert(writeOptions.method == -1);
 

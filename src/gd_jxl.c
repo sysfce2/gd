@@ -599,7 +599,6 @@ BGD_DECLARE(void) gdJxlReadOptionsInit(gdJxlReadOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->coalesced = 1;
 }
 
@@ -609,7 +608,6 @@ BGD_DECLARE(void) gdJxlWriteOptionsInit(gdJxlWriteOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->distance = 1.0f;
     options->effort = 7;
 }
@@ -650,10 +648,6 @@ static int JxlWriteNormalizeOptions(const gdJxlWriteOptions *options, gdJxlWrite
     *normalized = defaults;
     if (options == NULL) {
         return 1;
-    }
-    if (options->struct_size < sizeof(gdJxlWriteOptions)) {
-        gd_error("gd-jxl write: invalid options structure size");
-        return 0;
     }
     *normalized = *options;
     if (normalized->effort == 0) {
@@ -1040,10 +1034,6 @@ static int JxlReadNormalizeOptions(const gdJxlReadOptions *options, gdJxlReadOpt
     if (options == NULL) {
         return 1;
     }
-    if (options->struct_size < sizeof(gdJxlReadOptions)) {
-        gd_error("gd-jxl read: invalid options structure size");
-        return 0;
-    }
     *normalized = *options;
     return 1;
 }
@@ -1392,7 +1382,6 @@ BGD_DECLARE(void) gdJxlReadOptionsInit(gdJxlReadOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->coalesced = 1;
 }
 
@@ -1402,7 +1391,6 @@ BGD_DECLARE(void) gdJxlWriteOptionsInit(gdJxlWriteOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->distance = 1.0f;
     options->effort = 7;
 }

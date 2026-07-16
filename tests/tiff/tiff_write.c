@@ -161,7 +161,7 @@ static void assert_roundtrip_close(gdImagePtr src, void *data, int size,
 }
 
 static void test_multipage_rgb_ptr(void) {
-	gdTiffWriteOptions opts = {0};
+	gdTiffWriteOptions opts;
 	gdTiffWritePtr writer;
 	gdTiffReadPtr reader;
 	gdTiffInfo info;
@@ -170,6 +170,7 @@ static void test_multipage_rgb_ptr(void) {
 	void *data;
 	int size = 0;
 
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.compression = COMPRESSION_NONE;
 	opts.xResolution = 123.0f;
@@ -200,7 +201,7 @@ static void test_multipage_rgb_ptr(void) {
 
 	gdTestAssert(gdTiffIsMultiPagePtr(size, data) == 1);
 
-	reader = gdTiffReadOpenPtr(size, data);
+	reader = gdTiffReadOpenPtr(size, data, NULL);
 	gdTestAssert(reader != NULL);
 	if (reader == NULL) {
 		gdFree(data);
@@ -257,7 +258,7 @@ cleanup_images:
 }
 
 static void test_options_and_formats(void) {
-	gdTiffWriteOptions opts = {0};
+	gdTiffWriteOptions opts;
 	gdTiffWritePtr writer;
 	gdTiffReadPtr reader;
 	gdTiffPageInfo page;
@@ -265,6 +266,7 @@ static void test_options_and_formats(void) {
 	void *data;
 	int size = 0;
 
+	gdTiffWriteOptionsInit(&opts);
 	src = create_page(9, 3, 30, 200, 90);
 	gdTestAssert(src != NULL);
 	if (src == NULL) {
@@ -285,7 +287,7 @@ static void test_options_and_formats(void) {
 		data = gdTiffWritePtrFinish(writer, &size);
 		gdTestAssert(data != NULL);
 		if (data != NULL) {
-			reader = gdTiffReadOpenPtr(size, data);
+			reader = gdTiffReadOpenPtr(size, data, NULL);
 			gdTestAssert(reader != NULL);
 			if (reader != NULL) {
 				gdTestAssert(gdTiffReadNextImage(reader, &page, &im) == 1);
@@ -305,7 +307,7 @@ static void test_options_and_formats(void) {
 		}
 	}
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_BILEVEL;
 	opts.bitDepth = 1;
 	opts.compression = COMPRESSION_CCITTFAX4;
@@ -318,7 +320,7 @@ static void test_options_and_formats(void) {
 		data = gdTiffWritePtrFinish(writer, &size);
 		gdTestAssert(data != NULL);
 		if (data != NULL) {
-			reader = gdTiffReadOpenPtr(size, data);
+			reader = gdTiffReadOpenPtr(size, data, NULL);
 			gdTestAssert(reader != NULL);
 			if (reader != NULL) {
 				gdTestAssert(gdTiffReadNextImage(reader, &page, &im) == 1);
@@ -337,7 +339,7 @@ static void test_options_and_formats(void) {
 		}
 	}
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.bitDepth = 16;
 	opts.compression = COMPRESSION_JPEG;
@@ -354,7 +356,7 @@ static void test_options_and_formats(void) {
 }
 
 static void test_exact_uncompressed_samples(void) {
-	gdTiffWriteOptions opts = {0};
+	gdTiffWriteOptions opts;
 	gdImagePtr src;
 	void *data;
 	int size = 0;
@@ -366,6 +368,7 @@ static void test_exact_uncompressed_samples(void) {
 	uint8_t bilevel[1];
 	uint16_t bps, spp, photometric, extra, *extra_types;
 
+	gdTiffWriteOptionsInit(&opts);
 	src = create_truecolor(3, 1);
 	gdTestAssert(src != NULL);
 	if (src == NULL) {
@@ -404,7 +407,7 @@ static void test_exact_uncompressed_samples(void) {
 		gdFree(data);
 	}
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGBA;
 	opts.compression = COMPRESSION_NONE;
 	opts.alphaType = GD_TIFF_ALPHA_ASSOCIATED;
@@ -432,7 +435,7 @@ static void test_exact_uncompressed_samples(void) {
 	gdImageSetPixel(src, 1, 0, gdTrueColorAlpha(128, 129, 130, gdAlphaOpaque));
 	gdImageSetPixel(src, 2, 0, gdTrueColorAlpha(255, 254, 253, gdAlphaOpaque));
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.bitDepth = 16;
 	opts.compression = COMPRESSION_NONE;
@@ -465,7 +468,7 @@ static void test_exact_uncompressed_samples(void) {
 	gdImageSetPixel(src, 1, 0, gdTrueColorAlpha(128, 128, 128, gdAlphaOpaque));
 	gdImageSetPixel(src, 2, 0, gdTrueColorAlpha(255, 255, 255, gdAlphaOpaque));
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_GRAY;
 	opts.bitDepth = 16;
 	opts.compression = COMPRESSION_NONE;
@@ -482,7 +485,7 @@ static void test_exact_uncompressed_samples(void) {
 		gdFree(data);
 	}
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_GRAY;
 	opts.compression = COMPRESSION_NONE;
 	opts.minIsWhite = 1;
@@ -514,7 +517,7 @@ static void test_exact_uncompressed_samples(void) {
 	gdImageSetPixel(src, 6, 0, gdTrueColorAlpha(255, 255, 255, gdAlphaOpaque));
 	gdImageSetPixel(src, 7, 0, gdTrueColorAlpha(0, 0, 0, gdAlphaOpaque));
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_BILEVEL;
 	opts.bitDepth = 1;
 	opts.compression = COMPRESSION_NONE;
@@ -536,7 +539,7 @@ static void test_exact_uncompressed_samples(void) {
 		gdFree(data);
 	}
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_BILEVEL;
 	opts.bitDepth = 1;
 	opts.compression = COMPRESSION_NONE;
@@ -565,11 +568,12 @@ static void test_compression_matrix(void) {
 		COMPRESSION_NONE, COMPRESSION_LZW, COMPRESSION_ADOBE_DEFLATE,
 		COMPRESSION_DEFLATE, COMPRESSION_PACKBITS};
 	gdImagePtr src;
-	gdTiffWriteOptions opts = {0};
+	gdTiffWriteOptions opts;
 	void *data;
 	int size = 0;
 	size_t i;
 
+	gdTiffWriteOptionsInit(&opts);
 	src = create_pattern_image(8, 8);
 	gdTestAssert(src != NULL);
 	if (src == NULL) {
@@ -589,7 +593,7 @@ static void test_compression_matrix(void) {
 		if (data == NULL) {
 			continue;
 		}
-		reader = gdTiffReadOpenPtr(size, data);
+		reader = gdTiffReadOpenPtr(size, data, NULL);
 		gdTestAssert(reader != NULL);
 		if (reader != NULL) {
 			gdTestAssert(gdTiffReadNextImage(reader, &page, &im) == 1);
@@ -610,13 +614,13 @@ static void test_compression_matrix(void) {
 		gdFree(data);
 	}
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.compression = COMPRESSION_JPEG;
 	opts.jpegQuality = 95;
 	data = write_image_ptr(src, &opts, &size);
 	if (data != NULL) {
-		gdTiffReadPtr reader = gdTiffReadOpenPtr(size, data);
+		gdTiffReadPtr reader = gdTiffReadOpenPtr(size, data, NULL);
 		gdTestAssert(reader != NULL);
 		if (reader != NULL) {
 			gdTiffPageInfo page;
@@ -645,7 +649,7 @@ static void test_compression_matrix(void) {
 	gdImageFilledRectangle(src, 4, 0, 7, 1,
 						   gdTrueColorAlpha(255, 255, 255, gdAlphaOpaque));
 
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_BILEVEL;
 	opts.bitDepth = 1;
 	for (i = 0; i < 2; i++) {
@@ -659,14 +663,14 @@ static void test_compression_matrix(void) {
 		if (data == NULL) {
 			continue;
 		}
-		reader = gdTiffReadOpenPtr(size, data);
+		reader = gdTiffReadOpenPtr(size, data, NULL);
 		gdTestAssert(reader != NULL);
 		if (reader != NULL) {
 			gdTestAssert(gdTiffReadNextImage(reader, &page, &im) == 1);
 			gdTestAssertMsg(page.bitsPerSample == 1 &&
 								page.samplesPerPixel == 1,
 							"unexpected CCITT sample layout");
-			gdTestAssertMsg(page.compression == opts.compression,
+			gdTestAssertMsg(page.compression == (int)opts.compression,
 							"unexpected CCITT compression tag %d",
 							page.compression);
 			if (im != NULL)
@@ -680,7 +684,7 @@ static void test_compression_matrix(void) {
 
 static void test_writer_entry_points_and_validation(void) {
 	gdImagePtr src, palette;
-	gdTiffWriteOptions opts = {0};
+	gdTiffWriteOptions opts;
 	gdTiffWritePtr writer;
 	gdIOCtxPtr ctx;
 	void *data;
@@ -688,6 +692,7 @@ static void test_writer_entry_points_and_validation(void) {
 	char *path;
 	FILE *fp;
 
+	gdTiffWriteOptionsInit(&opts);
 	src = create_page(4, 4, 12, 34, 56);
 	gdTestAssert(src != NULL);
 	if (src == NULL) {
@@ -713,7 +718,7 @@ static void test_writer_entry_points_and_validation(void) {
 			fp = fopen(path, "rb");
 			gdTestAssert(fp != NULL);
 			if (fp != NULL) {
-				gdTiffReadPtr reader = gdTiffReadOpen(fp);
+				gdTiffReadPtr reader = gdTiffReadOpen(fp, NULL);
 				gdTestAssert(reader != NULL);
 				if (reader != NULL) {
 					gdTiffInfo info;
@@ -792,18 +797,18 @@ static void test_writer_entry_points_and_validation(void) {
 	}
 
 	gdSetErrorMethod(gdSilence);
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = 999;
 	gdTestAssert(gdTiffWriteOpenPtr(&opts) == NULL);
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.bitDepth = 12;
 	gdTestAssert(gdTiffWriteOpenPtr(&opts) == NULL);
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.bitDepth = 1;
 	gdTestAssert(gdTiffWriteOpenPtr(&opts) == NULL);
-	memset(&opts, 0, sizeof(opts));
+	gdTiffWriteOptionsInit(&opts);
 	opts.colorspace = GD_TIFF_RGB;
 	opts.compression = COMPRESSION_CCITTFAX4;
 	gdTestAssert(gdTiffWriteOpenPtr(&opts) == NULL);

@@ -17,7 +17,6 @@
 #include "gdhelpers.h"
 #include "png.h" /* includes zlib.h and setjmp.h */
 #include "zlib.h"
-#include <stddef.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -31,13 +30,6 @@ static unsigned int gdPngGetUint32(const unsigned char *data)
     return ((unsigned int)data[0] << 24) | ((unsigned int)data[1] << 16) |
            ((unsigned int)data[2] << 8) | (unsigned int)data[3];
 }
-
-#define GD_PNG_WRITE_OPTIONS_HAS_FIELD(s, field)                                                     \
-    ((s)->struct_size >= offsetof(gdPngWriteOptions, field) + sizeof((s)->field))
-#define GD_PNG_INFO_HAS_FIELD(s, field)                                                              \
-    ((s)->struct_size >= offsetof(gdPngInfo, field) + sizeof((s)->field))
-#define GD_PNG_WRITE_OPTIONS_MIN_SIZE offsetof(gdPngWriteOptions, resolution_x)
-#define GD_PNG_INFO_MIN_SIZE offsetof(gdPngInfo, resolution_x)
 
 static void gdPngPutUint32(unsigned char *data, size_t value)
 {
@@ -780,7 +772,6 @@ BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options)
     if (options == NULL)
         return;
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->compression_level = -1;
     options->filters = GD_PNG_FILTER_AUTO;
     options->compression_strategy = GD_PNG_COMPRESSION_STRATEGY_DEFAULT;
@@ -794,7 +785,6 @@ BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info)
         return;
     metadata = info->metadata;
     memset(info, 0, sizeof(*info));
-    info->struct_size = sizeof(*info);
     info->palette_entries = -1;
     info->x_pixels_per_unit = -1;
     info->y_pixels_per_unit = -1;
@@ -810,32 +800,22 @@ BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info)
     size_t png_size;
     size_t pos;
     gdImageMetadata *metadata;
-    size_t info_size;
     int seen_ihdr = FALSE;
     int seen_iend = FALSE;
 
-    if (info == NULL || info->struct_size < GD_PNG_INFO_MIN_SIZE || data == NULL || size < 0) {
+    if (info == NULL || data == NULL || size < 0) {
         return 1;
     }
 
-    info_size = info->struct_size;
-    if (info_size > sizeof(*info)) {
-        info_size = sizeof(*info);
-    }
     metadata = info->metadata;
-    memset(info, 0, info_size);
-    info->struct_size = info_size;
+    memset(info, 0, sizeof(*info));
     info->palette_entries = -1;
     info->x_pixels_per_unit = -1;
     info->y_pixels_per_unit = -1;
     info->physical_unit = -1;
     info->metadata = metadata;
-    if (GD_PNG_INFO_HAS_FIELD(info, resolution_x)) {
-        info->resolution_x = -1;
-    }
-    if (GD_PNG_INFO_HAS_FIELD(info, resolution_y)) {
-        info->resolution_y = -1;
-    }
+    info->resolution_x = -1;
+    info->resolution_y = -1;
 
     png_size = (size_t)size;
     if (png_size < 8 || memcmp(png, gdPngSignature, 8) != 0) {
@@ -918,12 +898,8 @@ BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info)
             info->y_pixels_per_unit = (int)y_pixels_per_unit;
             info->physical_unit = chunk_data[8];
             if (info->physical_unit == PNG_RESOLUTION_METER) {
-                if (GD_PNG_INFO_HAS_FIELD(info, resolution_x)) {
-                    info->resolution_x = (int)DPM2DPI(x_pixels_per_unit);
-                }
-                if (GD_PNG_INFO_HAS_FIELD(info, resolution_y)) {
-                    info->resolution_y = (int)DPM2DPI(y_pixels_per_unit);
-                }
+                info->resolution_x = (int)DPM2DPI(x_pixels_per_unit);
+                info->resolution_y = (int)DPM2DPI(y_pixels_per_unit);
             }
         } else if (gdPngChunkIs(type, "tEXt")) {
             if (metadata != NULL && gdPngSetTextProfile(metadata, chunk_data, chunk_size) != GD_META_OK) {
@@ -977,10 +953,6 @@ BGD_DECLARE(int) gdPngGetInfo(FILE *inFile, gdPngInfo *info)
 
 static int gdPngWriteOptionsValid(const gdPngWriteOptions *options)
 {
-    if (options->struct_size < GD_PNG_WRITE_OPTIONS_MIN_SIZE) {
-        gd_error("gd-png error: invalid options structure size\n");
-        return FALSE;
-    }
     if (options->compression_level < -1 || options->compression_level > 9) {
         gd_error("gd-png error: compression level must be -1 through 9\n");
         return FALSE;
@@ -1000,7 +972,7 @@ static int gdPngWriteOptionsValid(const gdPngWriteOptions *options)
 static unsigned int gdPngWriteOptionResolutionX(gdImagePtr im,
                                                 const gdPngWriteOptions *options)
 {
-    if (GD_PNG_WRITE_OPTIONS_HAS_FIELD(options, resolution_x) && options->resolution_x != 0) {
+    if (options->resolution_x != 0) {
         return options->resolution_x;
     }
     return im->res_x;
@@ -1009,7 +981,7 @@ static unsigned int gdPngWriteOptionResolutionX(gdImagePtr im,
 static unsigned int gdPngWriteOptionResolutionY(gdImagePtr im,
                                                 const gdPngWriteOptions *options)
 {
-    if (GD_PNG_WRITE_OPTIONS_HAS_FIELD(options, resolution_y) && options->resolution_y != 0) {
+    if (options->resolution_y != 0) {
         return options->resolution_y;
     }
     return im->res_y;
@@ -1671,7 +1643,6 @@ BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options)
     if (options == NULL)
         return;
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->compression_level = -1;
 }
 
@@ -1683,7 +1654,6 @@ BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info)
         return;
     metadata = info->metadata;
     memset(info, 0, sizeof(*info));
-    info->struct_size = sizeof(*info);
     info->palette_entries = -1;
     info->x_pixels_per_unit = -1;
     info->y_pixels_per_unit = -1;

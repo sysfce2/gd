@@ -155,7 +155,6 @@ BGD_DECLARE(void) gdJpegInfoInit(gdJpegInfo *info)
         return;
     }
     memset(info, 0, sizeof(*info));
-    info->struct_size = sizeof(*info);
     info->width = 0;
     info->height = 0;
     info->bits_per_sample = 0;
@@ -173,7 +172,6 @@ BGD_DECLARE(void) gdJpegReadOptionsInit(gdJpegReadOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->ignore_warning = 1;
     options->scale_num = 1;
     options->scale_denom = 1;
@@ -389,7 +387,6 @@ BGD_DECLARE(void) gdJpegWriteOptionsInit(gdJpegWriteOptions *options)
         return;
     }
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = -1;
     options->progressive = 0;
     options->force_no_subsampling = 0;
@@ -1718,7 +1715,6 @@ BGD_DECLARE(void) gdJpegInfoInit(gdJpegInfo *info)
 {
     if (info != NULL) {
         memset(info, 0, sizeof(*info));
-        info->struct_size = sizeof(*info);
     }
 }
 
@@ -1726,7 +1722,6 @@ BGD_DECLARE(void) gdJpegReadOptionsInit(gdJpegReadOptions *options)
 {
     if (options != NULL) {
         memset(options, 0, sizeof(*options));
-        options->struct_size = sizeof(*options);
         options->ignore_warning = 1;
         options->scale_num = 1;
         options->scale_denom = 1;
@@ -1738,7 +1733,6 @@ BGD_DECLARE(void) gdJpegWriteOptionsInit(gdJpegWriteOptions *options)
 {
     if (options != NULL) {
         memset(options, 0, sizeof(*options));
-        options->struct_size = sizeof(*options);
         options->quality = -1;
     }
 }

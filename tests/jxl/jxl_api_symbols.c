@@ -21,9 +21,7 @@ int main(void) {
 	gdJxlReadOptionsInit(&read_options);
 	gdJxlWriteOptionsInit(&write_options);
 
-	gdTestAssert(read_options.struct_size == sizeof(read_options));
 	gdTestAssert(read_options.coalesced == 1);
-	gdTestAssert(write_options.struct_size == sizeof(write_options));
 	gdTestAssert(write_options.canvasWidth == 0);
 	gdTestAssert(write_options.canvasHeight == 0);
 	gdTestAssert(write_options.distance == 1.0f);

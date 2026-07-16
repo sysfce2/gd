@@ -513,22 +513,10 @@ gdImageMetadataGetProfileAt(const gdImageMetadata *metadata, size_t index, const
 /* Point type for use in polygon drawing. */
 
 /**
- * Group: Types
- *
- * typedef: gdPointF
- *  Defines a point in a 2D coordinate system using floating point
- *  values.
- * x - Floating point position (increase from left to right)
- * y - Floating point Row position (increase from top to bottom)
- *
- * typedef: gdPointFPtr
- *  Pointer to a <gdPointF>
- *
- * See also:
- *  <gdImageCreate>, <gdImageCreateTrueColor>,
- **/
+ * @brief Defines a point in a 2D coordinate system using floating point values.
+  */
 typedef struct {
-    double x, y;
+    double x, y; /**< Floating point coordinates. x increases from left to right, y increases from top to bottom */
 } gdPointF, *gdPointFPtr;
 
 /*
@@ -902,7 +890,6 @@ enum {
  * @brief Options for writing PNG data.
  */
 typedef struct {
-    size_t struct_size;              /**< Size of this structure, set by gdPngWriteOptionsInit(). */
     int compression_level;           /**< PNG compression level: 0-9, or -1 for the zlib default. */
     unsigned int filters;            /**< Bitmask of GD_PNG_FILTER_* constants. */
     int compression_strategy;        /**< One of the GD_PNG_COMPRESSION_STRATEGY_* constants. */
@@ -922,7 +909,6 @@ typedef struct {
  * aspect ratio only and resolution_x/resolution_y remain -1.
  */
 typedef struct {
-    size_t struct_size;          /**< Size of this structure, set by gdPngInfoInit(). */
     int width;                   /**< Image width in pixels. */
     int height;                  /**< Image height in pixels. */
     int bit_depth;               /**< PNG bit depth from the IHDR chunk. */
@@ -1836,7 +1822,6 @@ enum {
  * @brief Basic information read from a JPEG header.
  */
 typedef struct {
-    size_t struct_size;   /**< Size of this structure, set by gdJpegInfoInit(). */
     int width;            /**< Image width in pixels. */
     int height;           /**< Image height in pixels. */
     int bits_per_sample;  /**< Bits per sample reported by the JPEG library. */
@@ -1856,7 +1841,6 @@ typedef struct {
  * @brief Options for reading JPEG data.
  */
 typedef struct {
-    size_t struct_size;       /**< Size of this structure, set by gdJpegReadOptionsInit(). */
     int ignore_warning;       /**< Non-zero to suppress recoverable JPEG warnings. */
     unsigned int scale_num;   /**< Decode scale numerator. When build against libjpeg-turbo, the library handles the scaling internally. With libjpeg, the available closed scaling factors are handled by the library, and GD handles the requested scaling then. */
     unsigned int scale_denom; /**< Decode scale denominator. */
@@ -1867,7 +1851,6 @@ typedef struct {
  * @brief Options for writing JPEG data.
  */
 typedef struct {
-    size_t struct_size;              /**< Size of this structure, set by gdJpegWriteOptionsInit(). */
     int quality;                     /**< JPEG quality, or -1 for the JPEG library default. */
     int progressive;                 /**< Controls progressive JPEG output. */
     int force_no_subsampling;        /**< Non-zero to force 4:4:4 chroma sampling. */
@@ -2184,7 +2167,7 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromWebpCtx(gdIOCtxPtr infile);
 
 /** @} */
 
-/** @name WebP Multi-Image Types And Constants */
+/** @name WebP Multi-Image/Animation Types And Constants */
 /** @{ */
 
 /**
@@ -2237,7 +2220,6 @@ typedef struct {
  * @brief WebP multi-image/animation reader options.
  */
 typedef struct {
-    size_t struct_size; /**< Size of this structure, set by gdWebpReadOptionsInit(). */
     int coalesced;      /**< Non-zero to read full-canvas images, zero to read raw frame rectangles. */
 } gdWebpReadOptions;
 
@@ -2245,7 +2227,6 @@ typedef struct {
  * @brief WebP animation writer options.
  */
 typedef struct {
-    size_t struct_size; /**< Size of this structure, set by gdWebpWriteOptionsInit(). */
     int canvasWidth;     /**< Canvas width in pixels, or 0 to use the first image width. */
     int canvasHeight;    /**< Canvas height in pixels, or 0 to use the first image height. */
     int loopCount;       /**< Animation loop count, or 0 for infinite looping. */
@@ -2764,7 +2745,6 @@ enum {
  * @brief JPEG XL multi-image/animation reader options.
  */
 typedef struct {
-    size_t struct_size; /**< Size of this structure, set by gdJxlReadOptionsInit(). */
     int coalesced;      /**< Non-zero to read full-canvas images, zero to read raw frame rectangles. */
 } gdJxlReadOptions;
 
@@ -2772,7 +2752,6 @@ typedef struct {
  * @brief JPEG XL multi-image/animation writer options.
  */
 typedef struct {
-    size_t struct_size; /**< Size of this structure, set by gdJxlWriteOptionsInit(). */
     int canvasWidth;    /**< Canvas width in pixels, or 0 to use the first image width. */
     int canvasHeight;   /**< Canvas height in pixels, or 0 to use the first image height. */
     int lossless;       /**< Non-zero to use lossless JPEG XL encoding. */
@@ -2987,7 +2966,6 @@ BGD_DECLARE(void) gdJxlWriteClose(gdJxlWritePtr writer);
 BGD_DECLARE(void *) gdJxlWritePtrFinish(gdJxlWritePtr writer, int *size);
 
 /** @} */
-
 /** @} */
 
 /**
@@ -3058,13 +3036,11 @@ typedef const char *gdHeifChroma;
 
 /** @brief HEIF decoder options used by gdImageCreateFromHeifPtrWithOptions(). */
 typedef struct {
-    size_t struct_size;         /**< Size of this structure; set by gdHeifReadOptionsInit(). */
     int ignore_transformations; /**< Nonzero to ignore HEIF image transformations while decoding. */
 } gdHeifReadOptions;
 
 /** @brief HEIF encoder options used by gdImageHeifPtrWithOptions(). */
 typedef struct {
-    size_t struct_size; /**< Size of this structure; set by gdHeifWriteOptionsInit(). */
     int quality;        /**< Lossy quality from 0 to 100, -1 for the default, or 200 for lossless. */
     int lossless;       /**< Nonzero to request lossless encoding. */
     gdHeifCodec codec;  /**< HEIF codec to use for output. */
@@ -3354,7 +3330,6 @@ enum {
 
 /** @brief AVIF encoder options used by gdImageAvifPtrWithOptions(). */
 typedef struct {
-    size_t struct_size;     /**< Size of this structure; set by gdAvifWriteOptionsInit(). */
     int quality;            /**< Compression quality from 0 to 100, or -1 for the default. */
     int speed;              /**< Encoder speed; lower values are slower and may improve compression. */
     int lossless;           /**< Nonzero to request lossless encoding. */
@@ -3496,7 +3471,7 @@ gdImageAvifCtx(gdImagePtr im, gdIOCtxPtr outfile, int quality, int speed);
  *          exit(1);
  *        }
  *
- *        reader = gdTiffReadOpen(in);
+ *        reader = gdTiffReadOpen(in, NULL);
  *        fclose(in);
  *        if (reader == NULL) {
  *          fprintf(stderr, "cannot read TIFF\n");
@@ -3573,6 +3548,15 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffPtr(int size, void *data);
 typedef struct gdTiffReadStruct *gdTiffReadPtr;
 
 /**
+ * @brief Options for reading TIFF data with the gdTiffRead*() API.
+ *
+ * Initialize with gdTiffReadOptionsInit() before setting fields.
+ */
+typedef struct {
+    int notused;  /**< Reserved for future read options; currently unused. */
+} gdTiffReadOptions;
+
+/**
  * @brief TIFF file information from the first page and container.
  */
 typedef struct {
@@ -3581,11 +3565,11 @@ typedef struct {
     int pageCount;        /**< Number of TIFF directories/pages in the file. */
     int bitsPerSample;    /**< First page bits per sample. */
     int samplesPerPixel;  /**< First page samples per pixel. */
-    int compression;      /**< First page compression tag value, usually a GD_TIFF_COMPRESSION_* constant. */
-    int photometric;      /**< First page photometric tag value, usually a GD_TIFF_PHOTOMETRIC_* constant. */
+    int compression;      /**< First page compression tag value, usually a GD_TIFF_COMPRESSION_* enum value. */
+    int photometric;      /**< First page photometric tag value, usually a GD_TIFF_PHOTOMETRIC_* enum value. */
     float xResolution;    /**< First page horizontal resolution. */
     float yResolution;    /**< First page vertical resolution. */
-    int resolutionUnit;   /**< First page resolution unit, one of the GD_TIFF_RESUNIT_* constants. */
+    int resolutionUnit;   /**< First page resolution unit, one of the GD_TIFF_RESUNIT_* enum values. */
 } gdTiffInfo;
 
 /**
@@ -3597,14 +3581,14 @@ typedef struct {
     int height;           /**< Page height in pixels. */
     int bitsPerSample;    /**< Page bits per sample. */
     int samplesPerPixel;  /**< Page samples per pixel. */
-    int compression;      /**< Page compression tag value, usually a GD_TIFF_COMPRESSION_* constant. */
-    int photometric;      /**< Page photometric tag value, usually a GD_TIFF_PHOTOMETRIC_* constant. */
-    int planar;           /**< Page planar configuration, one of the GD_TIFF_PLANARCONFIG_* constants. */
+    int compression;      /**< Page compression tag value, usually a GD_TIFF_COMPRESSION_* enum value. */
+    int photometric;      /**< Page photometric tag value, usually a GD_TIFF_PHOTOMETRIC_* enum value. */
+    int planar;           /**< Page planar configuration, one of the GD_TIFF_PLANARCONFIG_* enum values. */
     int hasAlpha;         /**< Non-zero if the page has extra alpha samples. */
     int isTiled;          /**< Non-zero if the page is stored as TIFF tiles. */
     float xResolution;    /**< Page horizontal resolution. */
     float yResolution;    /**< Page vertical resolution. */
-    int resolutionUnit;   /**< Page resolution unit, one of the GD_TIFF_RESUNIT_* constants. */
+    int resolutionUnit;   /**< Page resolution unit, one of the GD_TIFF_RESUNIT_* enum values. */
 } gdTiffPageInfo;
 
 /** @} */
@@ -3649,16 +3633,24 @@ BGD_DECLARE(int) gdTiffIsMultiPageCtx(gdIOCtxPtr in);
 BGD_DECLARE(int) gdTiffIsMultiPagePtr(int size, void *data);
 
 /**
+ * @brief Initialize TIFF read options with defaults.
+ *
+ * @param options Pointer to the options structure to initialize.
+ */
+BGD_DECLARE(void) gdTiffReadOptionsInit(gdTiffReadOptions *options);
+
+/**
  * @brief Open a TIFF multi-page reader from a stdio file.
  *
  * gdTiffReadOpen() reads the TIFF data into the reader and does not close fd.
  * The returned handle must be closed with gdTiffReadClose().
  *
  * @param fd Pointer to the input FILE stream.
+ * @param options Pointer to read options, or NULL for defaults.
  *
  * @return Returns a TIFF reader handle on success, or NULL on failure.
  */
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd);
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd, const gdTiffReadOptions *options);
 
 /**
  * @brief Open a TIFF multi-page reader from a gdIOCtx.
@@ -3667,10 +3659,11 @@ BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd);
  * in. The returned handle must be closed with gdTiffReadClose().
  *
  * @param in Pointer to the gdIOCtx input context.
+ * @param options Pointer to read options, or NULL for defaults.
  *
  * @return Returns a TIFF reader handle on success, or NULL on failure.
  */
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in);
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in, const gdTiffReadOptions *options);
 
 /**
  * @brief Open a TIFF multi-page reader from a memory buffer.
@@ -3681,10 +3674,11 @@ BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in);
  *
  * @param size Size of the TIFF memory buffer in bytes.
  * @param data Pointer to the TIFF memory buffer.
+ * @param options Pointer to read options, or NULL for defaults.
  *
  * @return Returns a TIFF reader handle on success, or NULL on failure.
  */
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data);
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data, const gdTiffReadOptions *options);
 
 /**
  * @brief Close a TIFF multi-page reader.
@@ -3724,67 +3718,69 @@ gdTiffReadNextImage(gdTiffReadPtr tiff, gdTiffPageInfo *info, gdImagePtr *image)
 /** @name TIFF Constants */
 /** @{ */
 
-/** Write RGB TIFF data. */
-#define GD_TIFF_RGB 1
-/** Write RGBA TIFF data with an alpha extra sample. */
-#define GD_TIFF_RGBA 2
-/** Write grayscale TIFF data. */
-#define GD_TIFF_GRAY 3
-/** Write 1-bit bilevel TIFF data. */
-#define GD_TIFF_BILEVEL 4
+/**
+ * @brief TIFF writer color spaces.
+ */
+typedef enum {
+    GD_TIFF_RGB = 1,     /**< Write RGB TIFF data. */
+    GD_TIFF_RGBA = 2,    /**< Write RGBA TIFF data with an alpha extra sample. */
+    GD_TIFF_GRAY = 3,    /**< Write grayscale TIFF data. */
+    GD_TIFF_BILEVEL = 4  /**< Write 1-bit bilevel TIFF data. */
+} gdTiffColorSpace;
 
-/** No TIFF compression. */
-#define GD_TIFF_COMPRESSION_NONE 1
-/** CCITT modified Huffman run-length encoding compression. */
-#define GD_TIFF_COMPRESSION_CCITT_RLE 2
-/** CCITT Group 3 fax compression. */
-#define GD_TIFF_COMPRESSION_CCITT_FAX3 3
-/** CCITT Group 4 fax compression. */
-#define GD_TIFF_COMPRESSION_CCITT_FAX4 4
-/** LZW compression. */
-#define GD_TIFF_COMPRESSION_LZW 5
-/** JPEG compression. */
-#define GD_TIFF_COMPRESSION_JPEG 7
-/** Adobe-style Deflate compression. */
-#define GD_TIFF_COMPRESSION_ADOBE_DEFLATE 8
-/** Deflate compression. */
-#define GD_TIFF_COMPRESSION_DEFLATE 32946
-/** PackBits compression. */
-#define GD_TIFF_COMPRESSION_PACKBITS 32773
+/**
+ * @brief TIFF compression tag values.
+ */
+typedef enum {
+    GD_TIFF_COMPRESSION_NONE = 1,            /**< No TIFF compression. */
+    GD_TIFF_COMPRESSION_CCITT_RLE = 2,       /**< CCITT modified Huffman run-length encoding compression. */
+    GD_TIFF_COMPRESSION_CCITT_FAX3 = 3,      /**< CCITT Group 3 fax compression. */
+    GD_TIFF_COMPRESSION_CCITT_FAX4 = 4,      /**< CCITT Group 4 fax compression. */
+    GD_TIFF_COMPRESSION_LZW = 5,             /**< LZW compression. */
+    GD_TIFF_COMPRESSION_JPEG = 7,            /**< JPEG compression. */
+    GD_TIFF_COMPRESSION_ADOBE_DEFLATE = 8,   /**< Adobe-style Deflate compression. */
+    GD_TIFF_COMPRESSION_DEFLATE = 32946,     /**< Deflate compression. */
+    GD_TIFF_COMPRESSION_PACKBITS = 32773     /**< PackBits compression. */
+} gdTiffCompression;
 
-/** White is the minimum sample value. */
-#define GD_TIFF_PHOTOMETRIC_MINISWHITE 0
-/** Black is the minimum sample value. */
-#define GD_TIFF_PHOTOMETRIC_MINISBLACK 1
-/** RGB photometric interpretation. */
-#define GD_TIFF_PHOTOMETRIC_RGB 2
-/** Palette color photometric interpretation. */
-#define GD_TIFF_PHOTOMETRIC_PALETTE 3
-/** Transparency mask photometric interpretation. */
-#define GD_TIFF_PHOTOMETRIC_TRANSPARENCY_MASK 4
-/** Separated photometric interpretation. */
-#define GD_TIFF_PHOTOMETRIC_SEPARATED 5
-/** YCbCr photometric interpretation. */
-#define GD_TIFF_PHOTOMETRIC_YCBCR 6
-/** CIE L*a*b* photometric interpretation. */
-#define GD_TIFF_PHOTOMETRIC_CIELAB 8
+/**
+ * @brief TIFF photometric interpretation tag values.
+ */
+typedef enum {
+    GD_TIFF_PHOTOMETRIC_MINISWHITE = 0,          /**< White is the minimum sample value. */
+    GD_TIFF_PHOTOMETRIC_MINISBLACK = 1,          /**< Black is the minimum sample value. */
+    GD_TIFF_PHOTOMETRIC_RGB = 2,                 /**< RGB photometric interpretation. */
+    GD_TIFF_PHOTOMETRIC_PALETTE = 3,             /**< Palette color photometric interpretation. */
+    GD_TIFF_PHOTOMETRIC_TRANSPARENCY_MASK = 4,   /**< Transparency mask photometric interpretation. */
+    GD_TIFF_PHOTOMETRIC_SEPARATED = 5,           /**< Separated photometric interpretation. */
+    GD_TIFF_PHOTOMETRIC_YCBCR = 6,               /**< YCbCr photometric interpretation. */
+    GD_TIFF_PHOTOMETRIC_CIELAB = 8               /**< CIE L*a*b* photometric interpretation. */
+} gdTiffPhotometric;
 
-/** Store samples for each pixel contiguously. */
-#define GD_TIFF_PLANARCONFIG_CONTIG 1
-/** Store samples in separate planes. */
-#define GD_TIFF_PLANARCONFIG_SEPARATE 2
+/**
+ * @brief TIFF planar configuration tag values.
+ */
+typedef enum {
+    GD_TIFF_PLANARCONFIG_CONTIG = 1,    /**< Store samples for each pixel contiguously. */
+    GD_TIFF_PLANARCONFIG_SEPARATE = 2   /**< Store samples in separate planes. */
+} gdTiffPlanarConfig;
 
-/** Resolution values have no absolute unit. */
-#define GD_TIFF_RESUNIT_NONE 1
-/** Resolution values are pixels per inch. */
-#define GD_TIFF_RESUNIT_INCH 2
-/** Resolution values are pixels per centimeter. */
-#define GD_TIFF_RESUNIT_CENTIMETER 3
+/**
+ * @brief TIFF resolution unit tag values.
+ */
+typedef enum {
+    GD_TIFF_RESUNIT_NONE = 1,       /**< Resolution values have no absolute unit. */
+    GD_TIFF_RESUNIT_INCH = 2,       /**< Resolution values are pixels per inch. */
+    GD_TIFF_RESUNIT_CENTIMETER = 3  /**< Resolution values are pixels per centimeter. */
+} gdTiffResolutionUnit;
 
-/** TIFF alpha samples are unassociated with color samples. */
-#define GD_TIFF_ALPHA_UNASSOCIATED 1
-/** TIFF alpha samples are premultiplied into color samples. */
-#define GD_TIFF_ALPHA_ASSOCIATED 2
+/**
+ * @brief TIFF alpha sample types.
+ */
+typedef enum {
+    GD_TIFF_ALPHA_UNASSOCIATED = 1,  /**< TIFF alpha samples are unassociated with color samples. */
+    GD_TIFF_ALPHA_ASSOCIATED = 2     /**< TIFF alpha samples are premultiplied into color samples. */
+} gdTiffAlphaType;
 
 /** @} */
 
@@ -3794,20 +3790,20 @@ gdTiffReadNextImage(gdTiffReadPtr tiff, gdTiffPageInfo *info, gdImagePtr *image)
 /**
  * @brief Options for writing TIFF data with the gdTiffWrite*() API.
  *
- * Zero-initialized options use defaults: 8-bit RGBA, Adobe Deflate
- * compression, inch resolution units, 72x72 resolution, and unassociated
- * alpha.
+ * Initialize with gdTiffWriteOptionsInit() before setting fields. NULL options
+ * use defaults: 8-bit RGBA, Adobe Deflate compression, inch resolution units,
+ * 72x72 resolution, and unassociated alpha.
  */
 typedef struct {
     int bitDepth;        /**< Bits per sample: 1, 8, or 16. */
-    int colorspace;      /**< Output colorspace, one of the GD_TIFF_RGB, GD_TIFF_RGBA, GD_TIFF_GRAY, or GD_TIFF_BILEVEL constants. */
-    int compression;     /**< TIFF compression, one of the GD_TIFF_COMPRESSION_* constants. */
+    gdTiffColorSpace colorspace;       /**< Output colorspace. */
+    gdTiffCompression compression;     /**< TIFF compression. */
     int jpegQuality;     /**< JPEG compression quality when compression is GD_TIFF_COMPRESSION_JPEG. */
     int minIsWhite;      /**< Non-zero to use white as the minimum sample value for gray or bilevel output. */
-    int resolutionUnit;  /**< Resolution unit, one of the GD_TIFF_RESUNIT_* constants. */
+    gdTiffResolutionUnit resolutionUnit;  /**< Resolution unit. */
     float xResolution;   /**< Horizontal resolution to store in the TIFF file. */
     float yResolution;   /**< Vertical resolution to store in the TIFF file. */
-    int alphaType;       /**< Alpha sample type, GD_TIFF_ALPHA_UNASSOCIATED or GD_TIFF_ALPHA_ASSOCIATED. */
+    gdTiffAlphaType alphaType;         /**< Alpha sample type. */
 } gdTiffWriteOptions;
 
 /**
@@ -3823,6 +3819,13 @@ typedef struct gdTiffWriteStruct *gdTiffWritePtr;
 
 /** @name TIFF Multi-Page Writing */
 /** @{ */
+
+/**
+ * @brief Initialize TIFF write options with defaults.
+ *
+ * @param options Pointer to the options structure to initialize.
+ */
+BGD_DECLARE(void) gdTiffWriteOptionsInit(gdTiffWriteOptions *options);
 
 /**
  * @brief Open a TIFF writer for a stdio file.

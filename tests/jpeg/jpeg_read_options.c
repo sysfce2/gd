@@ -102,7 +102,6 @@ int main(void)
 	}
 
 	gdJpegReadOptionsInit(&options);
-	gdTestAssert(options.struct_size == sizeof(options));
 	gdTestAssert(options.ignore_warning == 1);
 	gdTestAssert(options.scale_num == 1);
 	gdTestAssert(options.scale_denom == 1);

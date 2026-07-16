@@ -53,7 +53,6 @@ int main(void) {
 	gdTestAssert(im != NULL);
 
 	gdPngWriteOptionsInit(&options);
-	gdTestAssert(options.struct_size == sizeof(options));
 	gdTestAssert(options.compression_level == -1);
 	gdTestAssert(options.filters == GD_PNG_FILTER_AUTO);
 	gdTestAssert(options.compression_strategy ==

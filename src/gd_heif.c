@@ -36,14 +36,12 @@ static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expec
 BGD_DECLARE(void) gdHeifReadOptionsInit(gdHeifReadOptions *options)
 {
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->ignore_transformations = GD_TRUE;
 }
 
 BGD_DECLARE(void) gdHeifWriteOptionsInit(gdHeifWriteOptions *options)
 {
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = -1;
     options->lossless = GD_FALSE;
     options->codec = GD_HEIF_CODEC_HEVC;
@@ -522,14 +520,12 @@ static void _noHeifError(void) { gd_error("HEIF image support has been disabled\
 BGD_DECLARE(void) gdHeifReadOptionsInit(gdHeifReadOptions *options)
 {
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->ignore_transformations = GD_TRUE;
 }
 
 BGD_DECLARE(void) gdHeifWriteOptionsInit(gdHeifWriteOptions *options)
 {
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->quality = -1;
     options->lossless = GD_FALSE;
     options->codec = GD_HEIF_CODEC_HEVC;
