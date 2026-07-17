@@ -810,8 +810,8 @@ static int getPixelInterpolateWeightClipped(gdImagePtr im, const double x, const
                                             const int bgColor, const gdRectPtr clip)
 {
     /* Closest pixel <= (xf,yf) */
-    int sx = (int)(x);
-    int sy = (int)(y);
+    int sx = (int) floor(x);
+    int sy = (int) floor(y);
     const double xf = x - (double)sx;
     const double yf = y - (double)sy;
     const double nxf = (double)1.0 - xf;
@@ -832,13 +832,8 @@ static int getPixelInterpolateWeightClipped(gdImagePtr im, const double x, const
                        : getPixelOverflowPaletteClipped(im, sx, sy - 1, bgColor, clip);
     const int c4 = im->trueColor == 1
                        ? getPixelOverflowTCClipped(im, sx - 1, sy - 1, bgColor, clip)
-                       : getPixelOverflowPaletteClipped(im, sx, sy - 1, bgColor, clip);
+                       : getPixelOverflowPaletteClipped(im, sx - 1, sy - 1, bgColor, clip);
     gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
-
-    if (x < 0)
-        sx--;
-    if (y < 0)
-        sy--;
 
     gdAlphaWeightedColorAdd(&acc, c1, m1);
     gdAlphaWeightedColorAdd(&acc, c2, m2);
@@ -868,8 +863,8 @@ static int getPixelInterpolateWeightClipped(gdImagePtr im, const double x, const
 static int getPixelInterpolatedClipped(gdImagePtr im, const double x, const double y,
                                        const int bgColor, const gdRectPtr clip)
 {
-    const int xi = (int)(x);
-    const int yi = (int)(y);
+    const int xi = (int) floor(x);
+    const int yi = (int) floor(y);
     int yii;
     int i;
     double kernel, kernel_cache_y;
@@ -2464,11 +2459,6 @@ gdTransformAffineGetImage(gdImagePtr *dst, const gdImagePtr src, gdRectPtr src_a
  *  index of colors
  */
 static int getPixelRgbInterpolated(gdImagePtr im, const int tcolor)
-
-/**
- * @addtogroup TransformScaleRotate
- * @{
- */
 {
     unsigned char r, g, b, a;
     int ct;

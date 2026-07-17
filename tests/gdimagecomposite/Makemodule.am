@@ -1,0 +1,3 @@
+libgd_test_programs += gdimagecomposite/compose
+
+EXTRA_DIST += gdimagecomposite/CMakeLists.txt

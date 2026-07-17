@@ -2,6 +2,7 @@ LIST(APPEND TESTS_FILES
 	alpha_weight
 	edge
 	fractional
+	interpolation
 	matrix
 	rotate
 )

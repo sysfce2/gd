@@ -2,10 +2,13 @@ libgd_test_programs += \
 	gdimageaffine/alpha_weight \
 	gdimageaffine/edge \
 	gdimageaffine/fractional \
+	gdimageaffine/interpolation \
 	gdimageaffine/matrix \
 	gdimageaffine/rotate \
 	gdimageaffine/visual
 
 EXTRA_DIST += \
 	gdimageaffine/CMakeLists.txt \
-	gdimageaffine/visual_mixed.png
+	gdimageaffine/visual_mixed.png \
+	gdimageaffine/interpolation_edges_affine.png \
+	gdimageaffine/interpolation_edges_rotate.png

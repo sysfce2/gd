@@ -22,6 +22,7 @@ include gd2/Makemodule.am
 include gdcolormaplookup/Makemodule.am
 include gdimagearc/Makemodule.am
 include gdimageaffine/Makemodule.am
+include gdimagecomposite/Makemodule.am
 include gdimagebrightness/Makemodule.am
 include gdimageclone/Makemodule.am
 include gdimagecolor/Makemodule.am

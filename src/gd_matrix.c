@@ -34,7 +34,6 @@
  *
  * @{
  */
-
 BGD_DECLARE(int)
 gdAffineApplyToPointF(gdPointFPtr dst, const gdPointFPtr src, const double affine[6])
 {

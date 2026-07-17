@@ -1,0 +1,2 @@
+SET(TESTS_FILES compose)
+ADD_GD_TESTS()

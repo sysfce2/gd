@@ -273,7 +273,7 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromJxlCtx(gdIOCtxPtr inCtx)
     JxlDecoderSetCms(dec, *JxlGetDefaultCms());
 
     /* Set desired output color profile (sRGB) */
-    JxlColorEncoding srgb_enc;
+    JxlColorEncoding srgb_enc = {0};
     JxlColorEncodingSetToSRGB(&srgb_enc, JXL_FALSE);
     JxlDecoderSetPreferredColorProfile(dec, &srgb_enc);
 

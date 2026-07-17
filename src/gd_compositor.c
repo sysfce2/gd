@@ -337,3 +337,129 @@ int gdCompositePixelToGd(gdPremulPixelF p)
     }
     return gdTrueColorAlpha(r, g, b, a);
 }
+
+static int max_int(int a, int b) { return a > b ? a : b; }
+
+static int min_int(int a, int b) { return a < b ? a : b; }
+
+static int clamp_int32(int64_t value)
+{
+    if (value < INT32_MIN) {
+        return INT32_MIN;
+    }
+    if (value > INT32_MAX) {
+        return INT32_MAX;
+    }
+    return (int)value;
+}
+
+static int clip_rect_to_bounds(const gdRect *rect, int width, int height, gdRect *out)
+{
+    int64_t x1, y1;
+
+    if (rect == NULL) {
+        out->x = 0;
+        out->y = 0;
+        out->width = width;
+        out->height = height;
+        return width > 0 && height > 0;
+    }
+
+    x1 = (int64_t)rect->x + rect->width;
+    y1 = (int64_t)rect->y + rect->height;
+
+    out->x = max_int(rect->x, 0);
+    out->y = max_int(rect->y, 0);
+    out->width = min_int(x1 > INT32_MAX ? INT32_MAX : (int)x1, width) - out->x;
+    out->height = min_int(y1 > INT32_MAX ? INT32_MAX : (int)y1, height) - out->y;
+
+    return out->width > 0 && out->height > 0;
+}
+
+static int gd_image_pixel_as_truecolor(const gdImagePtr im, int x, int y)
+{
+    if (im->trueColor) {
+        return im->tpixels[y][x];
+    } else {
+        int c = im->pixels[y][x];
+        return gdTrueColorAlpha(im->red[c], im->green[c], im->blue[c], im->alpha[c]);
+    }
+}
+
+BGD_DECLARE(int)
+gdImageComposite(gdImagePtr dst, const gdImagePtr src, int dst_x, int dst_y,
+                 gdCompositeOperator op, double opacity, gdRectPtr src_region, gdRectPtr clip)
+{
+    gdRect src_full, src_bounds, dst_bounds, effect_bounds;
+    const int transparent = gdTrueColorAlpha(0, 0, 0, gdAlphaTransparent);
+    const int unbounded = gdCompositeOperatorIsUnbounded(op);
+    int64_t placed_x = dst_x, placed_y = dst_y, placed_x1 = dst_x, placed_y1 = dst_y;
+    int y, x;
+
+    if (dst == NULL || src == NULL || !dst->trueColor || !gdCompositeOperatorIsValid(op) ||
+        !isfinite(opacity) || opacity < 0.0 || opacity > 1.0) {
+        return GD_FALSE;
+    }
+
+    src_full.x = 0;
+    src_full.y = 0;
+    src_full.width = gdImageSX(src);
+    src_full.height = gdImageSY(src);
+    if (src_region == NULL) {
+        src_region = &src_full;
+    }
+
+    if (!clip_rect_to_bounds(clip, gdImageSX(dst), gdImageSY(dst), &dst_bounds)) {
+        dst->saveAlphaFlag = 1;
+        return GD_TRUE;
+    }
+
+    if (clip_rect_to_bounds(src_region, gdImageSX(src), gdImageSY(src), &src_bounds)) {
+        placed_x = (int64_t)dst_x + ((int64_t)src_bounds.x - src_region->x);
+        placed_y = (int64_t)dst_y + ((int64_t)src_bounds.y - src_region->y);
+        placed_x1 = placed_x + src_bounds.width;
+        placed_y1 = placed_y + src_bounds.height;
+    }
+
+    if (unbounded) {
+        effect_bounds = dst_bounds;
+    } else {
+        int64_t effect_x = max_int(dst_bounds.x, clamp_int32(placed_x));
+        int64_t effect_y = max_int(dst_bounds.y, clamp_int32(placed_y));
+        int64_t effect_x1 = min_int(dst_bounds.x + dst_bounds.width, clamp_int32(placed_x1));
+        int64_t effect_y1 = min_int(dst_bounds.y + dst_bounds.height, clamp_int32(placed_y1));
+
+        if (effect_x1 <= effect_x || effect_y1 <= effect_y) {
+            dst->saveAlphaFlag = 1;
+            return GD_TRUE;
+        }
+        effect_bounds.x = (int)effect_x;
+        effect_bounds.y = (int)effect_y;
+        effect_bounds.width = (int)(effect_x1 - effect_x);
+        effect_bounds.height = (int)(effect_y1 - effect_y);
+    }
+
+    for (y = effect_bounds.y; y < effect_bounds.y + effect_bounds.height; y++) {
+        int *dst_row = dst->tpixels[y];
+
+        for (x = effect_bounds.x; x < effect_bounds.x + effect_bounds.width; x++) {
+            int src_color = transparent;
+            int64_t src_x = (int64_t)src_region->x + (x - dst_x);
+            int64_t src_y = (int64_t)src_region->y + (y - dst_y);
+            gdPremulPixelF src_pixel, dst_pixel;
+
+            if (src_x >= src_bounds.x && src_x < src_bounds.x + src_bounds.width &&
+                src_y >= src_bounds.y && src_y < src_bounds.y + src_bounds.height) {
+                src_color = gd_image_pixel_as_truecolor(src, (int)src_x, (int)src_y);
+            }
+
+            src_pixel = gdCompositePixelFromGd(src_color);
+            dst_pixel = gdCompositePixelFromGd(dst_row[x]);
+            dst_row[x] = gdCompositePixelToGd(
+                gdCompositePixel(op, src_pixel, dst_pixel, (float)opacity));
+        }
+    }
+
+    dst->saveAlphaFlag = 1;
+    return GD_TRUE;
+}

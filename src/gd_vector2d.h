@@ -291,6 +291,24 @@ typedef gdCompositeOperator gdImageOp;
 #define gdImageOpsDstOut GD_OP_DEST_OUT
 
 /**
+ * @brief Composite a source image into a truecolor destination image.
+ *
+ * @param dst         Destination image.
+ * @param src         Source image.
+ * @param dst_x       Destination x offset.
+ * @param dst_y       Destination y offset.
+ * @param op          Composite operator.
+ * @param opacity     Global source opacity, from 0.0 to 1.0.
+ * @param src_region  Optional source rectangle.
+ * @param clip        Optional destination clip rectangle.
+ * @returns GD_TRUE on success, or GD_FALSE for invalid arguments.
+ */
+BGD_DECLARE(int)
+gdImageComposite(gdImagePtr dst, const gdImagePtr src, int dst_x, int dst_y,
+                 gdCompositeOperator op, double opacity, gdRectPtr src_region,
+                 gdRectPtr clip);
+
+/**
  * Constants: gdTextStatus
  *
  * Status values returned by 2D text functions.
