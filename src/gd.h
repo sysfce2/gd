@@ -4426,10 +4426,10 @@ typedef struct {
     void *context;
 } gdSource, *gdSourcePtr;
 
-/* Deprecated in favor of gdImageCreateFromPngCtx */
+/** @deprecated in favor of gdImageCreateFromPngCtx */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPngSource(gdSourcePtr in);
 
-/* for completeness with Sink 2.x APIs, will be removed in 3.0 with all Sink APIs */
+/** @deprecated for completeness with Sink 2.x APIs, will be removed in 3.0 with all Sink APIs */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromQoiSource(gdSourcePtr in);
 
 /**
@@ -4517,7 +4517,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromGdPtr(int size, void *data);
 /** @name GD Writing */
 /** @{ */
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as GD data to a newly allocated memory buffer.
  *
@@ -5354,7 +5353,6 @@ BGD_DECLARE(int) gdSupportsFileType(const char *filename, int writing);
    functions */
 BGD_DECLARE(void) gdFree(void *m);
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as WBMP data to a newly allocated memory buffer.
  * @ingroup gdCodecWbmp
@@ -5376,11 +5374,11 @@ BGD_DECLARE(void *) gdImageWBMPPtr(gdImagePtr im, int *size, int fg);
  * @{
  */
 
-/* 100 is highest quality (there is always a little loss with JPEG).
-   0 is lowest. 10 is about the lowest useful setting. */
 /**
  * @brief Write an image as JPEG data to a stdio file.
  * 
+ * 100 is the highest quality (there is always a little loss with JPEG).
+ * 0 is the lowest quality. 10 is about the lowest useful setting.
  * @param im The image to write.
  * @param out The stdio file to write the JPEG data to.
  * @param quality The JPEG quality (0-100).
@@ -5427,9 +5425,10 @@ gdImageJpegWithOptions(gdImagePtr im, FILE *out, const gdJpegWriteOptions *optio
 BGD_DECLARE(int)
 gdImageJpegCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdJpegWriteOptions *options);
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as JPEG data to a newly allocated memory buffer.
+ * 
+ * Result must be freed with gdFree(). The image is borrowed for the duration of the call.
  * 
  * @param im The image to write.
  * @param size Pointer to an integer that will receive the size of the returned buffer.
@@ -5649,7 +5648,6 @@ BGD_DECLARE(void) gdImageQoiToSink(gdImagePtr im, gdSinkPtr out);
  */
 BGD_DECLARE(void) gdImageGd2(gdImagePtr im, FILE *out, int cs, int fmt);
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as GD2 data to a newly allocated memory buffer.
  *
@@ -5834,9 +5832,16 @@ BGD_DECLARE(int) gdImageColorResolve(gdImagePtr im, int r, int g, int b);
 BGD_DECLARE(int)
 gdImageColorResolveAlpha(gdImagePtr im, int r, int g, int b, int a);
 
-/* A simpler way to obtain an opaque truecolor value for drawing on a
-   truecolor image. Not for use with palette images! */
-
+/**
+ * @brief Compose a truecolor value from its components
+ *
+ * use it only when needed an actual truecolor value, for example when drawing on a truecolor image.
+ * @param r The red channel (0-255)
+ * @param g The green channel (0-255)
+ * @param b The blue channel (0-255)
+ *
+ * @see gdTrueColorAlpha gdTrueColorGetAlpha gdTrueColorGetRed gdTrueColorGetGreen gdTrueColorGetBlue
+ */
 #define gdTrueColor(r, g, b) (((r) << 16) + ((g) << 8) + (b))
 
 /**
@@ -5883,15 +5888,6 @@ BGD_DECLARE(void) gdImageColorDeallocate(gdImagePtr im, int color);
  */
 BGD_DECLARE(int) gdImageColorMatch(gdImagePtr im1, gdImagePtr im2);
 
-/* Specifies a color index (if a palette image) or an
-   RGB color (if a truecolor image) which should be
-   considered 100% transparent. FOR TRUECOLOR IMAGES,
-   THIS IS IGNORED IF AN ALPHA CHANNEL IS BEING
-   SAVED. Use gdImageSaveAlpha(im, 0); to
-   turn off the saving of a full alpha channel in
-   a truecolor image. Note that gdImageColorTransparent
-   is usually compatible with older browsers that
-   do not understand full alpha channels well. TBB */
 
 /**
  * @brief Sets the transparent color of the image
@@ -6568,12 +6564,12 @@ BGD_DECLARE(void) gdImageLine(gdImagePtr im, int x1, int y1, int x2, int y2, int
 /* For backwards compatibility only. Use gdImageSetStyle()
    for much more flexible line drawing. */
 BGD_DECLARE(void) gdImageDashedLine(gdImagePtr im, int x1, int y1, int x2, int y2, int color);
-/* Corners specified (not width and height). Upper left first, lower right
-   second. */
 
 /**
  * @brief Draws a rectangle.
  *
+ * Corners are specified by their coordinates. The rectangle is drawn using the current line style and thickness.
+ * 
  * @param  im    The image.
  * @param  x1    The x-coordinate of one of the corners.
  * @param  y1    The y-coordinate of one of the corners.
@@ -7554,26 +7550,57 @@ gdImageCopyGaussianBlurred(gdImagePtr src, int radius, double sigma);
 #define gdImageResolutionY(im) (im)->res_y
 
 /* I/O Support routines. */
-
+/**
+ * @defgroup gdIOCtx I/O Contexts
+ * @{
+ */
+/** 
+ * @brief Creates a new I/O context for reading/writing to a file
+ * 
+ * returns a new I/O context for reading/writing to the specified file. The caller is responsible for closing the file when done.
+ * @param file A pointer to a FILE object that identifies the file to be used for I/O.
+ * @return A pointer to a new gdIOCtx structure, or NULL on failure.
+ */
 BGD_DECLARE(gdIOCtxPtr) gdNewFileCtx(FILE *);
-/* If data is null, size is ignored and an initial data buffer is
-   allocated automatically. NOTE: this function assumes gd has the right
-   to free or reallocate "data" at will! Also note that gd will free
-   "data" when the IO context is freed. If data is not null, it must point
-   to memory allocated with gdMalloc, or by a call to gdImage[something]Ptr.
-   If not, see gdNewDynamicCtxEx for an alternative. */
+
+/**
+ * @brief Creates a new I/O context for reading/writing to a dynamic memory buffer
+ * 
+ * If data is null, size is ignored and an initial data buffer is allocated automatically.
+ * This function assumes gd has the right to free or reallocate "data" at will! 
+ * Also note that gd will free "data" when the IO context is freed. 
+ * If data is not null, it must point to memory allocated with gdMalloc, or
+ * by a call to gdImage[something]Ptr. If not, see gdNewDynamicCtxEx for an alternative.
+ * 
+ * @param size The initial size of the dynamic memory buffer.
+ * @param data A pointer to a memory buffer, or NULL to allocate a new buffer.
+ * @return A pointer to a new gdIOCtx structure, or NULL on failure.
+ */
 BGD_DECLARE(gdIOCtxPtr) gdNewDynamicCtx(int size, void *data);
-/* 2.0.21: if freeFlag is nonzero, gd will free and/or reallocate "data" as
-   needed as described above. If freeFlag is zero, gd will never free
-   or reallocate "data", which means that the context should only be used
-   for *reading* an image from a memory buffer, or writing an image to a
-   memory buffer which is already large enough. If the memory buffer is
-   not large enough and an image write is attempted, the write operation
-   will fail. Those wishing to write an image to a buffer in memory have
-   a much simpler alternative in the gdImage[something]Ptr functions. */
+
+/**
+ * @brief Creates a new I/O context for reading/writing to a dynamic memory buffer with control over memory management
+ * 2.0.21: if freeFlag is nonzero, gd will free and/or reallocate "data" as
+ * needed as described above. If freeFlag is zero, gd will never free
+ * or reallocate "data", which means that the context should only be used
+ * for *reading* an image from a memory buffer, or writing an image to a
+ * memory buffer which is already large enough. If the memory buffer is
+ * not large enough and an image write is attempted, the write operation
+ * will fail. Those wishing to write an image to a buffer in memory have
+ * a much simpler alternative in the gdImage[something]Ptr functions
+ * 
+ * @param size The initial size of the dynamic memory buffer.
+ * @param data A pointer to a memory buffer, or NULL to allocate a new buffer.
+ * @param freeFlag A flag indicating whether gd should manage the memory of "data". If nonzero, gd will free and/or reallocate "data" as needed. If zero, gd will not free or reallocate "data".
+ * 
+ * @return A pointer to a new gdIOCtx structure, or NULL on failure.
+ */
 BGD_DECLARE(gdIOCtxPtr) gdNewDynamicCtxEx(int size, void *data, int freeFlag);
+
+/** @deprecated will be removed in a future version in favor of gdNewDynamicCtxEx and retated CTX APIs */
 BGD_DECLARE(gdIOCtxPtr) gdNewSSCtx(gdSourcePtr in, gdSinkPtr out);
 BGD_DECLARE(void *) gdDPExtractData(gdIOCtxPtr ctx, int *size);
+/** @} */
 
 /**
  * @addtogroup gdCodecGd2
@@ -7630,21 +7657,25 @@ BGD_DECLARE(void *) gdDPExtractData(gdIOCtxPtr ctx, int *size);
  */
 BGD_DECLARE(int) gdImageCompare(gdImagePtr im1, gdImagePtr im2);
 
+/** @brief Options for perceptual image comparison mode
+ */
 typedef enum {
-    GD_IMAGE_DIFF_NONE,
-    GD_IMAGE_DIFF_OVERLAY,
-    GD_IMAGE_DIFF_MASK
+    GD_IMAGE_DIFF_NONE, /**< No difference */
+    GD_IMAGE_DIFF_OVERLAY, /**< Overlay difference */
+    GD_IMAGE_DIFF_MASK /**< Mask difference */
 } gdImageDiffMode;
 
+/** @brief Options for perceptual image comparison */
 typedef struct {
-    gdImageDiffMode mode;
-    int highlight_color;
+    gdImageDiffMode mode; /**< The mode of the perceptual difference. */
+    int highlight_color; /**< The color used to highlight differences. */
 } gdImagePerceptualDiffOptions;
 
+/** @brief Result of perceptual image comparison */
 typedef struct {
-    unsigned int pixels_changed;
+    unsigned int pixels_changed; /**< Number of pixels that changed. */
     /* Largest normalized perceptual distance, in the range 0.0 to 1.0. */
-    double maximum_delta;
+    double maximum_delta; /**< The maximum perceptual distance found. */
 } gdImagePerceptualDiffResult;
 
 /*
@@ -7726,12 +7757,12 @@ BGD_DECLARE(void) gdImageFlipBoth(gdImagePtr im);
  * @see gdImageCropAuto gdImageCropThreshold gdCrop
  **/
 enum gdCropMode {
-    GD_CROP_DEFAULT = 0, /*< Same as GD_CROP_TRANSPARENT */
-    GD_CROP_TRANSPARENT, /*< Crop using the transparent color */
-    GD_CROP_BLACK, /*< Crop black borders */
-    GD_CROP_WHITE, /*< Crop white borders */
-    GD_CROP_SIDES, /*< Crop using colors of the 4 corners */
-    GD_CROP_THRESHOLD /*< Crop using a threshold */
+    GD_CROP_DEFAULT = 0, /**< Same as GD_CROP_TRANSPARENT */
+    GD_CROP_TRANSPARENT, /**< Crop using the transparent color */
+    GD_CROP_BLACK, /**< Crop black borders */
+    GD_CROP_WHITE, /**< Crop white borders */
+    GD_CROP_SIDES, /**< Crop using colors of the 4 corners */
+    GD_CROP_THRESHOLD /**< Crop using a threshold */
 };
 
 /**
