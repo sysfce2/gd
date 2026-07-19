@@ -62,6 +62,7 @@ libgd_la_SOURCES = \
 	gd.c \
 	gd.h \
 	gd_avif.c \
+	gdAvifApplyMetadata.c \
 	gd_bmp.c \
 	gd_color.c \
 	gd_color.h \
@@ -81,6 +82,7 @@ libgd_la_SOURCES = \
 	gd_gif_in.c \
 	gd_gif_out.c \
 	gd_heif.c \
+	gd_heif_metadata.c \
 	gd_intern.h \
 	gd_interpolation.c \
 	gd_interesting.c \
